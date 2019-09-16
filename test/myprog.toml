@@ -1,0 +1,6 @@
+exec = "/usr/bin/cat"
+
+[secrets]
+dummy = [
+	"./test"
+]
