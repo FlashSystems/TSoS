@@ -8,7 +8,8 @@ use std::io;
 use super::Error;
 
 pub struct TempDir {
-	path: PathBuf
+	path: PathBuf,
+	next_id: u32
 }
 
 impl Drop for TempDir {
@@ -49,12 +50,29 @@ impl TempDir {
 			Err(Error::from(io::Error::last_os_error()))
 		} else {
 			Ok(Self {
-				path: unsafe { PathBuf::from(CString::from_raw(c_temp_dir).into_string()?) }
+				path: unsafe { PathBuf::from(CString::from_raw(c_temp_dir).into_string()?) },
+				next_id: 0
 			})
 		}
 	}
 
-	pub fn create_file() -> Result<PathBuf, Error> {
+	pub fn create_file(&mut self, prefix: &str) -> Result<PathBuf, Error> {
+		let mut temp_file = self.path.clone();
 
+		temp_file.push(format!("{}-{:08x}", prefix, self.next_id));
+		self.next_id+=1;
+
+		// We unwrap here because we know that all parts are valid because they are path components.
+		let c_temp_file = CString::new(temp_file.to_str().unwrap())?;
+
+		let h_file = unsafe { libc::open(c_temp_file.as_ptr(), libc::O_CREAT|libc::O_NOFOLLOW|libc::O_TRUNC|libc::O_WRONLY, libc::S_IRWXU) };
+
+		if h_file < 0 {
+			Err(Error::from(io::Error::last_os_error()))
+		} else {
+			// Close the temporary file and return its name
+			unsafe { libc::close(h_file) };
+			Ok(temp_file)
+		}
 	}
 }
