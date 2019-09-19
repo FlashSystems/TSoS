@@ -46,6 +46,7 @@ impl From<toml::de::Error> for Error {
 pub struct Local {
 	pub exec: PathBuf,
 	pub secrets: HashMap<String, Vec<String>>,
+	pub search_path: Option<Vec<PathBuf>>
 }
 
 #[derive(Debug)]
@@ -67,7 +68,7 @@ impl Config {
 		config_file.read_to_string(&mut config_string)?;
 
 		// Create a list of search paths used for searching for secret provider scripts
-		let search_path = vec!(PathBuf::from("/etc/tsos/scripts"), PathBuf::from("/usr/lib/tsos"));
+		let search_path = vec!(PathBuf::from("/etc/tsos.d"), PathBuf::from("/usr/lib/tsos"));
 
 		Ok(Self{
 			local: toml::from_str(&config_string)?,

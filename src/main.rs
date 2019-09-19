@@ -43,21 +43,13 @@ impl error::Error for Error {
 	}
 }
 
-fn check_permissions(metadata: &MetadataEx) {
-	
-}
-
 fn find_script(search_path: &Vec<PathBuf>, script_name: &OsStr) -> Option<PathBuf> {
 	for path in search_path {
 		if path.is_dir() {
 			let mut script_path = PathBuf::from(path);
 			script_path.push(script_name);
 
-			if let Ok(meta) = script_path.metadata() {
-				if meta.st_uid() == 0 && meta.st_gid() == 0 && meta.st_mode() & {
-
-				}
-			}
+			//TODO: Check the file is only writable by root.
 
 			if script_path.is_file() {
 				return Some(script_path);
@@ -69,17 +61,27 @@ fn find_script(search_path: &Vec<PathBuf>, script_name: &OsStr) -> Option<PathBu
 }
 
 fn go(config: &Config) -> Result<(), Box<dyn error::Error>> {
-	//system::unshare_mount_ns()?;
+	system::unshare_mount_ns()?;
 
 	// Create temporary directory and mount a ramfs onto it
 	let mut temp = TempDir::new("tsos")?;
-	//system::mount_ramfs(512, "tsos", temp.as_ref())?;
+	
+	let temp_mount = system::RamFs::new(512, "tsos", temp.as_ref())?;
 
 	for (sos, targets) in config.local.secrets.iter() {
+		debug!("Processing secret provider {}...", sos);
+
 		// Make sure the file name can not be used for path traversal attacks
 		let sos = Path::new(sos).file_name().ok_or_else(|| Error::InvalidSourceName(sos.clone()))?;
 
-		if let Some(script_file) = find_script(&config.global.search_path, sos) {
+		// Search for the secret provider script
+		// If a local search path is configured it takes precedence over the global search path.
+		let mut script_search_result = if let Some(ref search_path) = config.local.search_path { find_script(search_path, sos) } else { None };
+		if script_search_result.is_none() {
+			script_search_result = find_script(&config.global.search_path, sos);
+		}
+
+		if let Some(script_file) = script_search_result {
 			for target in targets.iter() {
 				let destination = temp.create_file("tsos-dst")?;
 
@@ -106,22 +108,20 @@ fn go(config: &Config) -> Result<(), Box<dyn error::Error>> {
 	//system::spawn_wait(&PathBuf::from("/usr/bin/ls"), &vec!("-la", "/tmp")).expect("ls");
 	//system::spawn_wait(&PathBuf::from("/usr/bin/ls"), &vec!("-la", temp.as_ref().to_str().unwrap())).expect("ls");
 
-	//system::umount(temp.as_ref());
-
 	Ok(())
 }
 
 fn main() {
 	simple_logger::init_with_level(Level::Debug).unwrap();
 
-	let config = Config::new(&PathBuf::from("./test/myprog.toml"));
-
-	go(&config.unwrap()).unwrap();
-
-
-	//system::spawn_wait(&PathBuf::from("/usr/bin/sleep"), &vec!("10")).expect("spawn_wait");
-	//system::spawn_wait(&PathBuf::from("/usr/bin/echo"), &vec!("-e", "asd")).expect("spawn_wait");
-
-
-	print!("DONE"); 
+	match Config::new(&PathBuf::from("./test/myprog.toml")) {
+		Ok(config) => {
+			if let Err(error) = go(&config) {
+				error!("Starting {} with TSOS failed: {}", config.local.exec.display(), error);
+			}
+		},
+		Err(error) => {
+			error!("Failed to parse configuration file {} ", error);
+		}
+	}
 }

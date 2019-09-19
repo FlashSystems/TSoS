@@ -1,4 +1,5 @@
 use libc;
+use log::{debug, warn};
 use std::path::{Path, PathBuf};
 use std::ffi::{CString};
 use std::env::temp_dir;
@@ -14,9 +15,13 @@ pub struct TempDir {
 
 impl Drop for TempDir {
 	fn drop(&mut self) {
+		debug!("Deleting temporary directory {}...", self.path.display());
+
 		// We ignore the result here because there is not much we can do
 		// if deleting the temporary path fails.
-		let _ = remove_dir_all(&self.path);
+		if let Err(error) = remove_dir_all(&self.path) {
+			warn!("Deleting temporary directory {} failed: {}", self.path.display(), error);
+		}
 	}
 }
 
@@ -49,8 +54,12 @@ impl TempDir {
 		if c_temp_dir.is_null() {
 			Err(Error::from(io::Error::last_os_error()))
 		} else {
+			let temp_dir = unsafe { PathBuf::from(CString::from_raw(c_temp_dir).into_string()?) };
+
+			debug!("Allocated temporary directory {}.", temp_dir.display());
+
 			Ok(Self {
-				path: unsafe { PathBuf::from(CString::from_raw(c_temp_dir).into_string()?) },
+				path: temp_dir,
 				next_id: 0
 			})
 		}
@@ -70,6 +79,8 @@ impl TempDir {
 		if h_file < 0 {
 			Err(Error::from(io::Error::last_os_error()))
 		} else {
+			debug!("Allocated temporary file {}.", temp_file.display());
+
 			// Close the temporary file and return its name
 			unsafe { libc::close(h_file) };
 			Ok(temp_file)
