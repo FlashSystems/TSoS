@@ -116,9 +116,6 @@ fn go(config: &Config) -> Result<(), Box<dyn error::Error>> {
 		}
 	}
 
-	//system::spawn_wait(&PathBuf::from("/usr/bin/ls"), &vec!("-la", "/tmp")).expect("ls");
-	//system::spawn_wait(&PathBuf::from("/usr/bin/ls"), &vec!("-la", temp.as_ref().to_str().unwrap())).expect("ls");
-
 	Ok(())
 }
 
