@@ -1,5 +1,5 @@
 use libc;
-use log::{debug, warn};
+use log::debug;
 use std::path::Path;
 use std::ffi::CString;
 use std::ptr;

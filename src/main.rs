@@ -6,7 +6,6 @@ use std::os::unix::process::CommandExt;
 use std::fmt;
 use std::ffi::OsStr;
 use std::process::exit;
-use std::os::linux::fs::MetadataExt;
 
 use simple_logger;
 use log::{Level, debug, error};
@@ -46,7 +45,7 @@ impl error::Error for Error {
 	}
 }
 
-fn find_script(search_path: &Vec<PathBuf>, script_name: &OsStr) -> Option<PathBuf> {
+fn find_script(search_path: &[PathBuf], script_name: &OsStr) -> Option<PathBuf> {
 	for path in search_path {
 		if path.is_dir() {
 			let mut script_path = PathBuf::from(path);
@@ -73,7 +72,7 @@ fn go(config: &Config) -> Result<(), Box<dyn error::Error>> {
 	// Create temporary directory and mount a ramfs onto it
 	let mut temp = TempDir::new("tsos")?;
 	
-	let temp_mount = system::RamFs::new(512, "tsos", temp.as_ref())?;
+	let _temp_mount = system::RamFs::new(512, "tsos", temp.as_ref())?;
 
 	for (sos, targets) in config.local.secrets.iter() {
 		debug!("Processing secret provider {}...", sos);
@@ -129,7 +128,7 @@ fn main() {
 	let mut args: Vec<String> = env::args().collect();
 	args.remove(0); // Remove the first argument as it is our name.
 
-	if args.len() < 1 {
+	if args.is_empty() {
 		error!("Missing configuration file command line parameter.");
 		exit(1);
 	}
