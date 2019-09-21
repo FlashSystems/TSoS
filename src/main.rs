@@ -1,8 +1,11 @@
 use std::path::{Path, PathBuf};
 use std::error;
 use std::process::Command;
+use std::env;
+use std::os::unix::process::CommandExt;
 use std::fmt;
 use std::ffi::OsStr;
+use std::process::exit;
 use std::os::linux::fs::MetadataExt;
 
 use simple_logger;
@@ -49,11 +52,15 @@ fn find_script(search_path: &Vec<PathBuf>, script_name: &OsStr) -> Option<PathBu
 			let mut script_path = PathBuf::from(path);
 			script_path.push(script_name);
 
+			debug!("Trying {} as secret provider...", script_path.display());
+
 			//TODO: Check the file is only writable by root.
 
 			if script_path.is_file() {
 				return Some(script_path);
 			}
+		} else {
+			debug!("Search path {} not found or no directory.", path.display());
 		}
 	}
 
@@ -82,12 +89,15 @@ fn go(config: &Config) -> Result<(), Box<dyn error::Error>> {
 		}
 
 		if let Some(script_file) = script_search_result {
+			debug!("Found secret provider {} for secret {}.", script_file.display(), Path::new(sos).display());
 			for target in targets.iter() {
 				let destination = temp.create_file("tsos-dst")?;
 
 				if Path::new(target).is_file() {
-					debug!("Using secret provider {} for {}.", script_file.display(), Path::new(sos).display());
+					debug!("Executing secret provider...");
 
+					// Execute the secret provider.
+					// It will use the input file ($1) and update the output file ($2).
 					let exit_code = Command::new(&script_file).args(&[target, destination.to_str().unwrap_or("")]).status()?;
 					if !exit_code.success() {
 						if let Some(code) = exit_code.code() {
@@ -96,6 +106,8 @@ fn go(config: &Config) -> Result<(), Box<dyn error::Error>> {
 							return Err(Box::new(Error::ProviderTerminated(script_file)));
 						}
 					}
+
+					system::bind(&destination, &Path::new(target))?;
 				} else {
 					return Err(Box::new(Error::ProviderNoFile(script_file)));
 				}
@@ -114,14 +126,28 @@ fn go(config: &Config) -> Result<(), Box<dyn error::Error>> {
 fn main() {
 	simple_logger::init_with_level(Level::Debug).unwrap();
 
-	match Config::new(&PathBuf::from("./test/myprog.toml")) {
+	let mut args: Vec<String> = env::args().collect();
+	args.remove(0); // Remove the first argument as it is our name.
+
+	if args.len() < 1 {
+		error!("Missing configuration file command line parameter.");
+		exit(1);
+	}
+
+	match Config::new(&PathBuf::from(args.remove(0))) {
 		Ok(config) => {
 			if let Err(error) = go(&config) {
 				error!("Starting {} with TSOS failed: {}", config.local.exec.display(), error);
+				exit(3);
 			}
+
+			debug!("Replacing this process with {}...", config.local.exec.display());
+
+			Command::new(config.local.exec).args(args).exec();
 		},
 		Err(error) => {
 			error!("Failed to parse configuration file {} ", error);
+			exit(2);
 		}
 	}
 }

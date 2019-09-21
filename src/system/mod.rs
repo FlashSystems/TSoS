@@ -1,67 +1,45 @@
 use libc;
 use log::{debug, warn};
-use std::path::{PathBuf, Path};
+use std::path::Path;
 use std::ffi::CString;
-use std::os::raw::c_char;
 use std::ptr;
 use std::io;
-use std::process;
 
 mod tempdir;
 mod error;
+mod ramfs;
 
 pub use tempdir::TempDir;
 pub use error::Error;
+pub use ramfs::RamFs;
 
-pub struct RamFs {
-	mount_point: PathBuf
-}
+pub fn bind(source: &Path, target: &Path) -> Result<(), error::Error> {
+		let c_source = CString::new(source.to_str().unwrap())?;
+		let c_target = CString::new(target.to_str().unwrap())?;
 
-impl Drop for RamFs {
-	fn drop(&mut self) {
-		//FIXME: Error handling?
-		let c_path = CString::new(self.mount_point.to_str().unwrap()).unwrap();
+		debug!("Binding {} on {}...", source.display(), target.display());
 
-		debug!("Unmounting {}...", self.mount_point.display());
-
-		if unsafe { libc::umount(c_path.as_ptr()) } < 0 {
-			warn!("Unmounting {} failed with error {}", self.mount_point.display(), io::Error::last_os_error());
-		}
-	}
-}
-
-impl RamFs {
-	pub fn new(size: usize, source_tag: &str, path: &Path) -> io::Result<Self> {
-		let c_source_tag = CString::new(source_tag)?;
-		let c_path = CString::new(path.to_str().unwrap())?;
-		let c_fstype = CString::new("ramfs")?;
-		let c_params = CString::new(format!("size={},mode=701", size))?;
-
-		debug!("Mounting ramfs on {}...", path.display());
-
-		if unsafe { libc::mount(c_source_tag.as_ptr(), c_path.as_ptr(), c_fstype.as_ptr(), libc::MS_NODEV|libc::MS_NOEXEC, c_params.as_ptr() as *const libc::c_void) } < 0 {
-			return Err(io::Error::last_os_error());
-		}
-
-		debug!("Making mount {} private...", path.display());
-
-		// Make the mount private. We don't want this mount point to propagate anywhere.
-		if unsafe { libc::mount(ptr::null(), c_path.as_ptr(), ptr::null(), libc::MS_PRIVATE, ptr::null()) } < 0 {
-			Err(io::Error::last_os_error())
+		if unsafe { libc::mount(c_source.as_ptr(), c_target.as_ptr(), ptr::null(), libc::MS_BIND|libc::MS_PRIVATE, ptr::null()) } < 0 {
+			Err(error::Error::OsError(io::Error::last_os_error()))
 		} else {
-			Ok(Self{
-				mount_point: PathBuf::from(path)
-			})
+			Ok(())
 		}
-	}
 }
 
 pub fn unshare_mount_ns() -> io::Result<()> {
 	debug!("Unshare mount namespaces...");
 
-	if unsafe { libc::unshare(libc::CLONE_NEWNS) } < 0 {
+	if unsafe { libc::unshare(libc::CLONE_NEWNS) } != 0 {
 		Err(io::Error::last_os_error())
 	} else {
-		Ok(())
+		debug!("Change root file system propagation to private...");
+		
+		// Now disable the forwarding of mount changes for all already present mount points.
+		// This isolates this processes mount namespace completely from the parent process.
+		if unsafe { libc::mount(CString::new("none")?.as_ptr(), CString::new("/")?.as_ptr(), ptr::null(), libc::MS_PRIVATE|libc::MS_REC, ptr::null()) } < 0 {
+			Err(io::Error::last_os_error())
+		} else {
+			Ok(())
+		}
 	}
 }

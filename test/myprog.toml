@@ -1,7 +1,7 @@
-exec = "/usr/bin/cat"
+exec = "/bin/bash"
 search_path = [ "./test" ]
 
 [secrets]
 dummy = [
-	"./test"
+	"./test/file1"
 ]
