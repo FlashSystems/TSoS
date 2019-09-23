@@ -87,3 +87,53 @@ impl TempDir {
 		}
 	}
 }
+
+#[cfg(test)]
+mod tests {
+	use super::TempDir;
+	use std::path::PathBuf;
+	use std::collections::HashSet;
+
+	// Test that the prefix for the temporary directory works.
+	#[test]
+	fn prefix() {
+		let temp_dir1 = TempDir::new("asdf").unwrap();
+		let temp_dir2 = TempDir::new("jklo").unwrap();
+
+		// Check the prefix
+		assert_eq!(&temp_dir1.path.file_name().unwrap().to_str().unwrap()[..5], "asdf-");
+		assert_eq!(&temp_dir2.path.file_name().unwrap().to_str().unwrap()[..5], "jklo-");
+	}
+
+	// Test that the temporary directory gets removed on Drop.
+	#[test]
+	fn auto_remove() {
+		let path: PathBuf;
+
+		{
+			let temp_dir = TempDir::new("test").unwrap();
+			path = PathBuf::from(&temp_dir.path);
+
+			assert!(path.is_dir(), "Temporary directory missing");
+		}
+
+		assert!(!path.is_dir(), "Temporary director not cleaned up");
+	}
+
+	// Test that created file names are unique.
+	#[test]
+	fn file_creation() {
+		let mut temp_dir = TempDir::new("test").unwrap();
+
+		let mut file_list = HashSet::new();
+
+		for _fid in 0..100 {
+			let file = temp_dir.create_file("tteeesstt").unwrap();
+
+			assert!(file.is_file(), "File not created");
+			assert!(file_list.insert(file), "Duplicate file name");
+		}
+
+		assert_eq!(file_list.len(), 100);
+	}
+}
