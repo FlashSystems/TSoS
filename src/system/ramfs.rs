@@ -23,11 +23,11 @@ impl Drop for RamFs {
 }
 
 impl RamFs {
-	pub fn new(size: usize, source_tag: &str, path: &Path) -> io::Result<Self> {
+	pub fn new(source_tag: &str, path: &Path) -> io::Result<Self> {
 		let c_source_tag = CString::new(source_tag)?;
 		let c_path = CString::new(path.to_str().unwrap())?;
 		let c_fstype = CString::new("ramfs")?;
-		let c_params = CString::new(format!("size={},mode=701", size))?;
+		let c_params = CString::new("mode=701")?;
 
 		debug!("Mounting ramfs on {}...", path.display());
 
@@ -64,7 +64,7 @@ mod test {
 
 		// Enter new scope to test unmounting
 		{
-			let _ramfs = RamFs::new(10240, "testfs", tmp.as_ref());
+			let _ramfs = RamFs::new("testfs", tmp.as_ref());
 
 			assert_eq!(read_dir(&tmp).unwrap().count(), 0, "RamFs not empty after mounting");
 

@@ -73,7 +73,7 @@ fn go(config: &Config) -> Result<(), Box<dyn error::Error>> {
 	// Create temporary directory and mount a ramfs onto it
 	let mut temp = TempDir::new("tsos")?;
 	
-	let _temp_mount = system::RamFs::new(512, "tsos", temp.as_ref())?;
+	let _temp_mount = system::RamFs::new("tsos", temp.as_ref())?;
 
 	for (sos, targets) in config.local.secrets.iter() {
 		debug!("Processing secret provider {}...", sos);
