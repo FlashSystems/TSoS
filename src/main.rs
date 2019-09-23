@@ -91,13 +91,14 @@ fn go(config: &Config) -> Result<(), Box<dyn error::Error>> {
 			debug!("Found secret provider {} for secret {}.", script_file.display(), Path::new(sos).display());
 			for target in targets.iter() {
 				let destination = temp.create_file("tsos-dst")?;
+				let target = Path::new(target);	// Shadow target with a path instance because we need a path more often than a string.
 
-				if Path::new(target).is_file() {
+				if target.is_file() {
 					debug!("Executing secret provider...");
 
 					// Execute the secret provider.
 					// It will use the input file ($1) and update the output file ($2).
-					let exit_code = Command::new(&script_file).args(&[target, destination.to_str().unwrap_or("")]).status()?;
+					let exit_code = Command::new(&script_file).args(&[target, &destination]).status()?;
 					if !exit_code.success() {
 						if let Some(code) = exit_code.code() {
 							return Err(Box::new(Error::ProviderFailed(script_file, code)));
@@ -106,7 +107,11 @@ fn go(config: &Config) -> Result<(), Box<dyn error::Error>> {
 						}
 					}
 
-					system::bind(&destination, &Path::new(target))?;
+					debug!("Copying permissions...");
+
+					system::copy_perms_and_owners(&target, &destination)?;
+
+					system::bind(&destination, &target)?;
 				} else {
 					return Err(Box::new(Error::ProviderNoFile(script_file)));
 				}

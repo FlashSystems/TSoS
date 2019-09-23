@@ -8,10 +8,12 @@ use std::io;
 mod tempdir;
 mod error;
 mod ramfs;
+mod permissions;
 
 pub use tempdir::TempDir;
 pub use error::Error;
 pub use ramfs::RamFs;
+pub use permissions::copy_perms_and_owners;
 
 pub fn bind(source: &Path, target: &Path) -> Result<(), error::Error> {
 		let c_source = CString::new(source.to_str().unwrap())?;
