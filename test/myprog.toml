@@ -1,3 +1,4 @@
+#!/home/dgoss/Entwicklung/tsos/target/debug/tsos
 exec = "/bin/bash"
 search_path = [ "./test" ]
 

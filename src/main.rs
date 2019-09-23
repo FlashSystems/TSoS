@@ -4,6 +4,7 @@ use std::process::Command;
 use std::env;
 use std::os::unix::process::CommandExt;
 use std::fmt;
+use std::str::FromStr;
 use std::ffi::OsStr;
 use std::process::exit;
 
@@ -125,8 +126,17 @@ fn go(config: &Config) -> Result<(), Box<dyn error::Error>> {
 }
 
 fn main() {
-	simple_logger::init_with_level(Level::Debug).unwrap();
+	// Parse the TSOS_LOG environment variable and set the log-level accoringly.
+	let log_level = match env::var("TSOS_LOG") {
+		Ok(level) => Level::from_str(&level).unwrap_or(Level::Warn),
+		Err(_) => Level::Warn
+	};
 
+	simple_logger::init_with_level(log_level).unwrap();
+
+	// Extract the command line arguments and check if we got at least one
+	// argument (the config file name). All other arguments will be passed
+	// down to the final program hat we execute.
 	let mut args: Vec<String> = env::args().collect();
 	args.remove(0); // Remove the first argument as it is our name.
 
@@ -135,7 +145,7 @@ fn main() {
 		exit(1);
 	}
 
-	match Config::new(&PathBuf::from(args.remove(0))) {
+	match Config::new(&PathBuf::from(args.remove(0)), std::env::var_os("TSOS_PATH")) {
 		Ok(config) => {
 			if let Err(error) = go(&config) {
 				error!("Starting {} with TSOS failed: {}", config.local.exec.display(), error);
