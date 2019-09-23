@@ -1,0 +1,3 @@
+# Make sure the tests are run as root
+[target.x86_64-unknown-linux-gnu]
+runner = 'sudo -E'

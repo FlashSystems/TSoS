@@ -47,3 +47,32 @@ impl RamFs {
 		}
 	}
 }
+
+#[cfg(test)]
+mod test {
+	use super::super::TempDir;
+	use super::RamFs;
+	use std::fs::read_dir;
+	use std::fs::File;
+
+	// Test mounting and unmounting RamFs
+	#[test]
+	fn mount_unmount() {
+		let mut tmp = TempDir::new("test").unwrap();
+
+		assert_eq!(read_dir(&tmp).unwrap().count(), 0, "Mountpoint not empty");
+
+		// Enter new scope to test unmounting
+		{
+			let _ramfs = RamFs::new(10240, "testfs", tmp.as_ref());
+
+			assert_eq!(read_dir(&tmp).unwrap().count(), 0, "RamFs not empty after mounting");
+
+			File::create(tmp.create_file("test").unwrap()).unwrap();
+
+			assert_eq!(read_dir(&tmp).unwrap().count(), 1, "Clould not find created test file");
+		}
+
+		assert_eq!(read_dir(&tmp).unwrap().count(), 0, "Mountpoint not empty after unmount");
+	}
+}
