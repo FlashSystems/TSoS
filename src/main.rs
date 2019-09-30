@@ -125,6 +125,13 @@ fn prepare(config: &Config) -> Result<(), Box<dyn error::Error>> {
 	Ok(())
 }
 
+/// WARNING: This function ends in an execvp. No destructors for instances allocated
+/// within this function will run. All preparation is done in the prepare() function.
+/// When this function terminates all destructors (drop) will run and everything is
+/// fine. Therefore do all RAII within prepare!
+/// This method only allocates a Logger- and a Config-Instance. These will not been
+/// torn down. They simply will vanish when the process memory is replaced with the
+/// new process image.
 fn main() {
 	// Parse the TSOS_LOG environment variable and set the log-level accoringly.
 	let log_level = match env::var("TSOS_LOG") {

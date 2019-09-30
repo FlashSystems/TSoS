@@ -71,6 +71,8 @@ pub struct Config {
 	pub global: Global
 }
 
+/// WARNING: This class must be prepared to vanish at any moment without getting
+/// its destructor called. Do not use resources thar require RAII!
 impl Config {
 	pub fn new(file: &Path, env_path: Option<OsString>) -> Result<Self, Error> {
 		let mut config_file = File::open(file)?;
