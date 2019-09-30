@@ -67,7 +67,7 @@ fn find_script(search_path: &[PathBuf], script_name: &OsStr) -> Option<PathBuf> 
 	None
 }
 
-fn go(config: &Config) -> Result<(), Box<dyn error::Error>> {
+fn prepare(config: &Config) -> Result<(), Box<dyn error::Error>> {
 	system::unshare_mount_ns()?;
 
 	// Create temporary directory and mount a ramfs onto it
@@ -147,7 +147,7 @@ fn main() {
 
 	match Config::new(&PathBuf::from(args.remove(0)), std::env::var_os("TSOS_PATH")) {
 		Ok(config) => {
-			if let Err(error) = go(&config) {
+			if let Err(error) = prepare(&config) {
 				error!("Starting {} with TSOS failed: {}", config.local.exec.display(), error);
 				exit(3);
 			}
