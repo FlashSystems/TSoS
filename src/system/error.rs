@@ -9,6 +9,8 @@ pub enum Error {
 	ConversionError(IntoStringError),
 	InvalidString(NulError),
 	InvalidArgument(&'static str),
+	UserNotFound(String),
+	GroupNotFound(String),
 	ExecFailed(i32)
 }
 
@@ -19,6 +21,8 @@ impl fmt::Display for Error {
 			Self::ConversionError(error) => write!(f, "Wrong parameter format: {}", error),
 			Self::InvalidString(error) => write!(f, "Invalid string: {}", error),
 			Self::InvalidArgument(arg_name) => write!(f, "Invalid argument {}.", arg_name),
+			Self::UserNotFound(user_name) => write!(f, "User {} not found.", user_name),
+			Self::GroupNotFound(group_name) => write!(f, "Group {} not found.", group_name),
 			Self::ExecFailed(result_code) => write!(f, "Process failed with exit code {}.", result_code)
 		}
 	}
