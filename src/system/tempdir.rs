@@ -90,7 +90,7 @@ impl TempDir {
 
 #[cfg(test)]
 mod test {
-	use super::TempDir;
+	use super::*;
 	use std::path::PathBuf;
 	use std::collections::HashSet;
 

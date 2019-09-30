@@ -50,8 +50,8 @@ impl RamFs {
 
 #[cfg(test)]
 mod test {
+	use super::*;
 	use super::super::TempDir;
-	use super::RamFs;
 	use std::fs::read_dir;
 	use std::fs::File;
 
