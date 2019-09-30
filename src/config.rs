@@ -45,10 +45,19 @@ impl From<toml::de::Error> for Error {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(untagged)]
+pub enum Id {
+	Nummeric(u32),
+	Text(String)
+}
+
+#[derive(Debug, Deserialize)]
 pub struct Local {
 	pub exec: PathBuf,
 	pub secrets: HashMap<String, Vec<String>>,
-	pub search_path: Option<Vec<PathBuf>>
+	pub search_path: Option<Vec<PathBuf>>,
+	pub uid: Option<Id>,
+	pub gid: Option<Id>
 }
 
 #[derive(Debug)]

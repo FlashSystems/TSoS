@@ -45,3 +45,70 @@ pub fn unshare_mount_ns() -> io::Result<()> {
 		}
 	}
 }
+
+pub type UId = libc::uid_t;
+
+pub fn resolve_uid(user_name: &str) -> Result<Option<UId>, error::Error> {
+	let c_user_name = CString::new(user_name)?;
+	let mut user_info: libc::passwd = unsafe { std::mem::zeroed() };;
+	let mut result: *mut libc::passwd = std::ptr::null_mut();
+
+	// Dertermin the necessary buffer size for the getpwnam call.
+	// If the size could not be determined, use 16 K
+	let buffer_size = unsafe { libc::sysconf(libc::_SC_GETPW_R_SIZE_MAX) }.max(16535) as usize;
+	let mut buffer = Vec::with_capacity(buffer_size);
+
+	let error = unsafe { libc::getpwnam_r(c_user_name.as_ptr(), &mut user_info, buffer.as_mut_slice().as_mut_ptr(), buffer_size, &mut result) };
+	if error == 0 {
+		if result.is_null() {
+			Ok(None)
+		} else {
+			Ok(Some(user_info.pw_uid))
+		}
+	} else {
+		Err(Error::OsError(io::Error::from_raw_os_error(error)))
+	}
+}
+
+pub type GId = libc::gid_t;
+
+pub fn resolve_gid(group_name: &str) -> Result<Option<GId>, error::Error> {
+	let c_group_name = CString::new(group_name)?;
+	let mut group_info: libc::group = unsafe { std::mem::zeroed() };;
+	let mut result: *mut libc::group = std::ptr::null_mut();
+
+	// Dertermin the necessary buffer size for the getpwnam call.
+	// If the size could not be determined, use 16 K
+	let buffer_size = unsafe { libc::sysconf(libc::_SC_GETPW_R_SIZE_MAX) }.max(16535) as usize;
+	let mut buffer = Vec::with_capacity(buffer_size);
+
+	let error = unsafe { libc::getgrnam_r(c_group_name.as_ptr(), &mut group_info, buffer.as_mut_slice().as_mut_ptr(), buffer_size, &mut result) };
+	if error == 0 {
+		if result.is_null() {
+			Ok(None)
+		} else {
+			Ok(Some(group_info.gr_gid))
+		}
+	} else {
+		Err(Error::OsError(io::Error::from_raw_os_error(error)))
+	}
+}
+
+#[cfg(test)]
+mod test {
+	use super::*;
+
+	#[test]
+	fn res_uid_ok() {
+		// Check that the uid is correctly resolved
+		assert_eq!(resolve_uid("root").unwrap().unwrap(), 0);
+		assert_eq!(resolve_uid("bin").unwrap().unwrap(), 1);
+	}
+
+	#[test]
+	fn res_gid_ok() {
+		// Check that the uid is correctly resolved
+		assert_eq!(resolve_gid("root").unwrap().unwrap(), 0);
+		assert_eq!(resolve_gid("bin").unwrap().unwrap(), 1);
+	}
+}

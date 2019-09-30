@@ -67,7 +67,7 @@ pub fn copy_perms_and_owners(src: &Path, dst: &Path) -> io::Result<()>{
 
 #[cfg(test)]
 mod test {
-	use super::copy_perms_and_owners;
+	use super::*;
 	use super::super::TempDir;
 	use libc;
 	use std::ffi::CString;
