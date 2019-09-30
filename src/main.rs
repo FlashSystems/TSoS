@@ -16,6 +16,7 @@ use system::TempDir;
 
 mod config;
 use config::Config;
+use config::Id;
 
 #[derive(Debug)]
 pub enum Error {
@@ -125,6 +126,24 @@ fn prepare(config: &Config) -> Result<(), Box<dyn error::Error>> {
 	Ok(())
 }
 
+fn prepare_privileges(command: &mut Command, config: &Config) -> Result<(), Box<dyn error::Error>> {
+	let uid = match config.local.uid {
+		Some(Id::Nummeric(ref uid)) => Some(*uid),
+		Some(Id::Text(ref user_name)) => Some(system::resolve_uid(user_name)?),
+		None => None
+	};
+	let gid = match config.local.gid {
+		Some(Id::Nummeric(ref gid)) => Some(*gid),
+		Some(Id::Text(ref group_name)) => Some(system::resolve_gid(group_name)?),
+		None => None
+	};
+
+	if let Some(uid) = uid { command.uid(uid); }
+	if let Some(gid) = gid { command.gid(gid); }
+	
+	Ok(())
+}
+
 /// WARNING: This function ends in an execvp. No destructors for instances allocated
 /// within this function will run. All preparation is done in the prepare() function.
 /// When this function terminates all destructors (drop) will run and everything is
@@ -161,7 +180,13 @@ fn main() {
 
 			debug!("Replacing this process with {}...", config.local.exec.display());
 
-			Command::new(config.local.exec).args(args).exec();
+			let mut command = Command::new(&config.local.exec);
+			if let Err(error) = prepare_privileges(&mut command, &config) {
+				error!("Preparing privileges for executing {} failed: {}", config.local.exec.display(), error);
+				exit(4);
+			}
+			command.args(args);
+			command.exec();
 		},
 		Err(error) => {
 			error!("Failed to parse configuration file {} ", error);
