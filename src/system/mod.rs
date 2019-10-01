@@ -4,6 +4,7 @@ use std::path::Path;
 use std::ffi::CString;
 use std::ptr;
 use std::io;
+use std::mem::MaybeUninit;
 
 mod tempdir;
 mod error;
@@ -50,7 +51,7 @@ pub type UId = libc::uid_t;
 pub type GId = libc::gid_t;
 
 pub fn resolve_uid(uid: UId) -> Result<(UId, GId), error::Error> {
-	let mut user_info: libc::passwd = unsafe { std::mem::zeroed() };;
+	let mut user_info = MaybeUninit::<libc::passwd>::zeroed();
 	let mut result: *mut libc::passwd = std::ptr::null_mut();
 
 	// Dertermin the necessary buffer size for the getpwnam call.
@@ -58,11 +59,12 @@ pub fn resolve_uid(uid: UId) -> Result<(UId, GId), error::Error> {
 	let buffer_size = unsafe { libc::sysconf(libc::_SC_GETPW_R_SIZE_MAX) }.max(16535) as usize;
 	let mut buffer = Vec::with_capacity(buffer_size);
 
-	let error = unsafe { libc::getpwuid_r(uid, &mut user_info, buffer.as_mut_slice().as_mut_ptr(), buffer_size, &mut result) };
+	let error = unsafe { libc::getpwuid_r(uid, user_info.as_mut_ptr(), buffer.as_mut_slice().as_mut_ptr(), buffer_size, &mut result) };
 	if error == 0 {
 		if result.is_null() {
 			Err(Error::UserNotFound(format!("uid {}", uid)))
 		} else {
+			let user_info = unsafe { user_info.assume_init() };
 			Ok((user_info.pw_uid, user_info.pw_gid))
 		}
 	} else {
@@ -72,7 +74,7 @@ pub fn resolve_uid(uid: UId) -> Result<(UId, GId), error::Error> {
 
 pub fn resolve_user(user_name: &str) -> Result<(UId, GId), error::Error> {
 	let c_user_name = CString::new(user_name)?;
-	let mut user_info: libc::passwd = unsafe { std::mem::zeroed() };;
+	let mut user_info = MaybeUninit::<libc::passwd>::zeroed();
 	let mut result: *mut libc::passwd = std::ptr::null_mut();
 
 	// Dertermin the necessary buffer size for the getpwnam call.
@@ -80,11 +82,12 @@ pub fn resolve_user(user_name: &str) -> Result<(UId, GId), error::Error> {
 	let buffer_size = unsafe { libc::sysconf(libc::_SC_GETPW_R_SIZE_MAX) }.max(16535) as usize;
 	let mut buffer = Vec::with_capacity(buffer_size);
 
-	let error = unsafe { libc::getpwnam_r(c_user_name.as_ptr(), &mut user_info, buffer.as_mut_slice().as_mut_ptr(), buffer_size, &mut result) };
+	let error = unsafe { libc::getpwnam_r(c_user_name.as_ptr(), user_info.as_mut_ptr(), buffer.as_mut_slice().as_mut_ptr(), buffer_size, &mut result) };
 	if error == 0 {
 		if result.is_null() {
 			Err(Error::UserNotFound(String::from(user_name)))
 		} else {
+			let user_info = unsafe { user_info.assume_init() };
 			Ok((user_info.pw_uid, user_info.pw_gid))
 		}
 	} else {
@@ -94,7 +97,7 @@ pub fn resolve_user(user_name: &str) -> Result<(UId, GId), error::Error> {
 
 pub fn resolve_group(group_name: &str) -> Result<GId, error::Error> {
 	let c_group_name = CString::new(group_name)?;
-	let mut group_info: libc::group = unsafe { std::mem::zeroed() };;
+	let mut group_info = MaybeUninit::<libc::group>::zeroed();
 	let mut result: *mut libc::group = std::ptr::null_mut();
 
 	// Dertermin the necessary buffer size for the getpwnam call.
@@ -102,11 +105,12 @@ pub fn resolve_group(group_name: &str) -> Result<GId, error::Error> {
 	let buffer_size = unsafe { libc::sysconf(libc::_SC_GETPW_R_SIZE_MAX) }.max(16535) as usize;
 	let mut buffer = Vec::with_capacity(buffer_size);
 
-	let error = unsafe { libc::getgrnam_r(c_group_name.as_ptr(), &mut group_info, buffer.as_mut_slice().as_mut_ptr(), buffer_size, &mut result) };
+	let error = unsafe { libc::getgrnam_r(c_group_name.as_ptr(), group_info.as_mut_ptr(), buffer.as_mut_slice().as_mut_ptr(), buffer_size, &mut result) };
 	if error == 0 {
 		if result.is_null() {
 			Err(Error::GroupNotFound(String::from(group_name)))
 		} else {
+			let group_info = unsafe { group_info.assume_init() };
 			Ok(group_info.gr_gid)
 		}
 	} else {

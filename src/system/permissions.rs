@@ -5,6 +5,9 @@ use std::ffi::CString;
 use std::io;
 use std::os::linux::fs::MetadataExt;
 
+#[cfg(feature = "acl")]
+use std::mem::MaybeUninit;
+
 // Until RFC 1861 lands we have to define the opaque ErrorContext type as a type
 // with one zero size member.
 #[cfg(feature = "acl")]
@@ -25,8 +28,8 @@ fn copy_permissions(src: &Path, _: &dyn MetadataExt, dst: &Path) -> io::Result<(
 	debug!("Copying file ACLs from {} to {}...", src.display(), dst.display());
 
 	let result = unsafe {
-		let mut ctx: ErrorContext = std::mem::uninitialized();
-		perm_copy_file(c_src.as_ptr(), c_dst.as_ptr(), &mut ctx)
+		let mut ctx = MaybeUninit::<ErrorContext>::uninit();
+		perm_copy_file(c_src.as_ptr(), c_dst.as_ptr(), ctx.as_mut_ptr())
 	};
 
 	if result == 0 {
