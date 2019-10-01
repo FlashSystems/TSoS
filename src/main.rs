@@ -127,18 +127,18 @@ fn prepare(config: &Config) -> Result<(), Box<dyn error::Error>> {
 }
 
 fn prepare_privileges(command: &mut Command, config: &Config) -> Result<(), Box<dyn error::Error>> {
-	let uid = match config.local.uid {
-		Some(Id::Nummeric(ref uid)) => Some(*uid),
-		Some(Id::Text(ref user_name)) => Some(system::resolve_uid(user_name)?),
+	let uid_gid = match config.local.uid {
+		Some(Id::Nummeric(ref uid)) => Some(system::resolve_uid(*uid)?),
+		Some(Id::Text(ref user_name)) => Some(system::resolve_user(user_name)?),
 		None => None
 	};
 	let gid = match config.local.gid {
 		Some(Id::Nummeric(ref gid)) => Some(*gid),
-		Some(Id::Text(ref group_name)) => Some(system::resolve_gid(group_name)?),
+		Some(Id::Text(ref group_name)) => Some(system::resolve_group(group_name)?),
 		None => None
 	};
 
-	if let Some(uid) = uid { command.uid(uid); }
+	if let Some((uid, ugid)) = uid_gid { command.uid(uid); command.gid(ugid); }
 	if let Some(gid) = gid { command.gid(gid); }
 	
 	Ok(())

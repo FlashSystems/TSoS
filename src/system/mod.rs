@@ -47,8 +47,30 @@ pub fn unshare_mount_ns() -> io::Result<()> {
 }
 
 pub type UId = libc::uid_t;
+pub type GId = libc::gid_t;
 
-pub fn resolve_uid(user_name: &str) -> Result<UId, error::Error> {
+pub fn resolve_uid(uid: UId) -> Result<(UId, GId), error::Error> {
+	let mut user_info: libc::passwd = unsafe { std::mem::zeroed() };;
+	let mut result: *mut libc::passwd = std::ptr::null_mut();
+
+	// Dertermin the necessary buffer size for the getpwnam call.
+	// If the size could not be determined, use 16 K
+	let buffer_size = unsafe { libc::sysconf(libc::_SC_GETPW_R_SIZE_MAX) }.max(16535) as usize;
+	let mut buffer = Vec::with_capacity(buffer_size);
+
+	let error = unsafe { libc::getpwuid_r(uid, &mut user_info, buffer.as_mut_slice().as_mut_ptr(), buffer_size, &mut result) };
+	if error == 0 {
+		if result.is_null() {
+			Err(Error::UserNotFound(format!("uid {}", uid)))
+		} else {
+			Ok((user_info.pw_uid, user_info.pw_gid))
+		}
+	} else {
+		Err(Error::OsError(io::Error::from_raw_os_error(error)))
+	}
+}
+
+pub fn resolve_user(user_name: &str) -> Result<(UId, GId), error::Error> {
 	let c_user_name = CString::new(user_name)?;
 	let mut user_info: libc::passwd = unsafe { std::mem::zeroed() };;
 	let mut result: *mut libc::passwd = std::ptr::null_mut();
@@ -63,16 +85,14 @@ pub fn resolve_uid(user_name: &str) -> Result<UId, error::Error> {
 		if result.is_null() {
 			Err(Error::UserNotFound(String::from(user_name)))
 		} else {
-			Ok(user_info.pw_uid)
+			Ok((user_info.pw_uid, user_info.pw_gid))
 		}
 	} else {
 		Err(Error::OsError(io::Error::from_raw_os_error(error)))
 	}
 }
 
-pub type GId = libc::gid_t;
-
-pub fn resolve_gid(group_name: &str) -> Result<GId, error::Error> {
+pub fn resolve_group(group_name: &str) -> Result<GId, error::Error> {
 	let c_group_name = CString::new(group_name)?;
 	let mut group_info: libc::group = unsafe { std::mem::zeroed() };;
 	let mut result: *mut libc::group = std::ptr::null_mut();
@@ -99,16 +119,25 @@ mod test {
 	use super::*;
 
 	#[test]
-	fn res_uid_ok() {
+	fn res_user() {
 		// Check that the uid is correctly resolved
-		assert_eq!(resolve_uid("root").unwrap(), 0);
-		assert_eq!(resolve_uid("bin").unwrap(), 1);
+		assert_eq!(resolve_user("root").unwrap(), (0, 0));
+		assert_eq!(resolve_user("bin").unwrap(), (1, 1));
+		assert!(resolve_user("u_n-k,o.w+n").is_err());
 	}
 
 	#[test]
-	fn res_gid_ok() {
+	fn res_uid() {
 		// Check that the uid is correctly resolved
-		assert_eq!(resolve_gid("root").unwrap(), 0);
-		assert_eq!(resolve_gid("bin").unwrap(), 1);
+		assert_eq!(resolve_uid(0).unwrap(), (0, 0));
+		assert_eq!(resolve_uid(1).unwrap(), (1, 1));
+		assert!(resolve_uid(65432).is_err());
+	}
+
+	#[test]
+	fn res_group() {
+		// Check that the uid is correctly resolved
+		assert_eq!(resolve_group("root").unwrap(), 0);
+		assert_eq!(resolve_group("bin").unwrap(), 1);
 	}
 }
