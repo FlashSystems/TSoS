@@ -1,5 +1,7 @@
 #!/home/dgoss/Entwicklung/tsos/target/debug/tsos
 exec = "/bin/bash"
+uid = "dgoss"
+gid = "dgoss"
 search_path = [ "./test" ]
 
 [secrets]
