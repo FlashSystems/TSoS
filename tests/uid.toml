@@ -1,5 +1,0 @@
-#!/home/dgoss/Entwicklung/tsos/target/debug/tsos
-exec = "/usr/bin/id"
-uid = "bin"
-
-[secrets]
