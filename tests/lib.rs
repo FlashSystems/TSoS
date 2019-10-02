@@ -6,7 +6,14 @@ use std::time::Duration;
 use std::process::Command;
 use temp_testdir::TempDir;
 
+// Path to the compiled tsos executable used for tesing
 const TSOS_FILE: &str = "./target/debug/tsos";
+
+// Path to different binaries required for the tests
+const BIN_CAT: &str = "/usr/bin/cat";
+const BIN_ID: &str = "/usr/bin/id";
+const BIN_SLEEP: &str = "/usr/bin/sleep";
+const BIN_MOUNT: &str = "/usr/bin/mount";
 
 fn to_file(tmp: &TempDir, file_name: &str, content: &str) -> PathBuf {
 	let mut out_file_name = PathBuf::from(tmp.as_ref());
@@ -18,61 +25,79 @@ fn to_file(tmp: &TempDir, file_name: &str, content: &str) -> PathBuf {
 	out_file_name
 }
 
-// Test that the process is startet with the correct uid and the default group id
+/// Test that the process is startet with the correct uid and the default group id
 #[test]
 fn toml_uid_default() {
 	let tmp = TempDir::default();
 
-	let toml_file = to_file(&tmp, "uid.toml", r#"
-		exec = "/usr/bin/id"
+	let toml_file = to_file(&tmp, "uid.toml", &format!(r#"
+		exec = "{}"
 		uid = "bin"
 
 		[secrets]
-	"#);
+	"#, BIN_ID));
 	
-	let output = Command::new(TSOS_FILE).arg(&toml_file).arg("-u").output().unwrap();
+	let output = Command::new(TSOS_FILE)
+		.arg(&toml_file)
+		.arg("-u")
+		.output().unwrap();
 	assert_eq!(String::from_utf8_lossy(&output.stdout).trim(), "1");
 
-	let output = Command::new(TSOS_FILE).arg(&toml_file).arg("-g").output().unwrap();
+	let output = Command::new(TSOS_FILE)
+		.arg(&toml_file)
+		.arg("-g")
+		.output().unwrap();
 	assert_eq!(String::from_utf8_lossy(&output.stdout).trim(), "1");
 }
 
-// Test that the process is startet with the correct group id if only the group id is set.
+/// Test that the process is startet with the correct group id if only the group id is set.
 #[test]
 fn toml_gid() {
 	let tmp = TempDir::default();
 
-	let toml_file = to_file(&tmp, "uid.toml", r#"
-		exec = "/usr/bin/id"
+	let toml_file = to_file(&tmp, "uid.toml", &format!(r#"
+		exec = "{}"
 		gid = "bin"
 
 		[secrets]
-	"#);
+	"#, BIN_ID));
 
-	let output = Command::new(TSOS_FILE).arg(&toml_file).arg("-u").output().unwrap();
+	let output = Command::new(TSOS_FILE)
+		.arg(&toml_file)
+		.arg("-u")
+		.output().unwrap();
 	assert_eq!(String::from_utf8_lossy(&output.stdout).trim(), "0");
 
-	let output = Command::new(TSOS_FILE).arg(&toml_file).arg("-g").output().unwrap();
+	let output = Command::new(TSOS_FILE)
+		.arg(&toml_file)
+		.arg("-g")
+		.output().unwrap();
 	assert_eq!(String::from_utf8_lossy(&output.stdout).trim(), "1");
 }
 
-// Test that the process is startet with the corret uid and gid if both are set.
+/// Test that the process is startet with the corret uid and gid if both are set.
 #[test]
 fn toml_uid_gid() {
 	let tmp = TempDir::default();
 
-	let toml_file = to_file(&tmp, "uid.toml", r#"
-		exec = "/usr/bin/id"
+	let toml_file = to_file(&tmp, "uid.toml", &format!(r#"
+		exec = "{}"
 		uid = "bin"
 		gid = "root"
 
 		[secrets]
-	"#);
+	"#, BIN_ID));
 
-	let output = Command::new(TSOS_FILE).arg(&toml_file).arg("-u").output().unwrap();
+	let output = Command::new(TSOS_FILE)
+		.arg(&toml_file)
+		.arg("-u")
+		.output().unwrap();
 	assert_eq!(String::from_utf8_lossy(&output.stdout).trim(), "1");
 
-	let output = Command::new(TSOS_FILE).arg(&toml_file).arg("-g").output().unwrap();
+	let output = Command::new(TSOS_FILE)
+		.arg(&toml_file)
+		.arg("-g")
+		.output().unwrap();
 	assert_eq!(String::from_utf8_lossy(&output.stdout).trim(), "0");
 }
 
@@ -87,18 +112,18 @@ fn provider_local_search() {
 	{
 		let source = to_file(&tmp, "source.conf", "s1");
 
-		let toml = format!(r#"
-			#!/home/dgoss/Entwicklung/tsos/target/debug/tsos
-			exec = "/usr/bin/cat"
+		let toml_file = to_file(&tmp, "test.toml", &format!(r#"
+			exec = "{}"
 			search_path = [ "./tests/providers/a", "./tests/providers/b" ]
 
 			[secrets]
 			provider =  [ "{}" ]
-		"#, source.to_string_lossy());
+		"#, BIN_CAT, source.to_string_lossy()));
 
-		let toml_file = to_file(&tmp, "test.toml", &toml);
-
-		let output = Command::new(TSOS_FILE).arg(toml_file).arg(source).output().unwrap();
+		let output = Command::new(TSOS_FILE)
+			.arg(toml_file)
+			.arg(source)
+			.output().unwrap();
 
 		assert_eq!(String::from_utf8_lossy(&output.stdout).trim(), "s1:./tests/providers/a/provider");
 	}
@@ -107,18 +132,18 @@ fn provider_local_search() {
 	{
 		let source = to_file(&tmp, "source.conf", "s1");
 
-		let toml = format!(r#"
-			#!/home/dgoss/Entwicklung/tsos/target/debug/tsos
-			exec = "/usr/bin/cat"
+		let toml_file = to_file(&tmp, "test.toml", &format!(r#"
+			exec = "{}"
 			search_path = [ "./tests/providers/b", "./tests/providers/a" ]
 
 			[secrets]
 			provider =  [ "{}" ]
-		"#, source.to_string_lossy());
+		"#, BIN_CAT, source.to_string_lossy()));
 
-		let toml_file = to_file(&tmp, "test.toml", &toml);
-
-		let output = Command::new(TSOS_FILE).arg(toml_file).arg(source).output().unwrap();
+		let output = Command::new(TSOS_FILE)
+			.arg(toml_file)
+			.arg(source)
+			.output().unwrap();
 
 		assert_eq!(String::from_utf8_lossy(&output.stdout).trim(), "s1:./tests/providers/b/provider");
 	}
@@ -131,18 +156,17 @@ fn provider_local_before_env_search() {
 
 	let source = to_file(&tmp, "source.conf", "s1");
 
-	let toml = format!(r#"
-		#!/home/dgoss/Entwicklung/tsos/target/debug/tsos
-		exec = "/usr/bin/cat"
+	let toml_file = to_file(&tmp, "test.toml", &format!(r#"
+		exec = "{}"
 		search_path = [ "./tests/providers/a" ]
 
 		[secrets]
 		provider =  [ "{}" ]
-	"#, source.to_string_lossy());
+	"#, BIN_CAT, source.to_string_lossy()));
 
-	let toml_file = to_file(&tmp, "test.toml", &toml);
-
-	let output = Command::new(TSOS_FILE).arg(toml_file).arg(source)
+	let output = Command::new(TSOS_FILE)
+		.arg(toml_file)
+		.arg(source)
 		.env("TSOS_PATH", "./tests/providers/b")
 		.output().unwrap();
 
@@ -156,18 +180,17 @@ fn provider_env_search() {
 
 	let source = to_file(&tmp, "source.conf", "s1");
 
-	let toml = format!(r#"
-		#!/home/dgoss/Entwicklung/tsos/target/debug/tsos
-		exec = "/usr/bin/cat"
+	let toml_file = to_file(&tmp, "test.toml", &format!(r#"
+		exec = "{}"
 		search_path = [ "./tests/providers/a" ]
 
 		[secrets]
 		provider_ba =  [ "{}" ]
-	"#, source.to_string_lossy());
+	"#, BIN_CAT, source.to_string_lossy()));
 
-	let toml_file = to_file(&tmp, "test.toml", &toml);
-
-	let output = Command::new(TSOS_FILE).arg(toml_file).arg(source)
+	let output = Command::new(TSOS_FILE)
+		.arg(toml_file)
+		.arg(source)
 		.env("TSOS_PATH", "./tests/providers/b")
 		.output().unwrap();
 
@@ -185,26 +208,26 @@ fn mount_leakage() {
 	let source1 = to_file(&tmp, "source1.conf", "s1");
 	let source2 = to_file(&tmp, "source2.conf", "s2");
 
-	let toml = format!(r#"
-		#!/home/dgoss/Entwicklung/tsos/target/debug/tsos
-		exec = "/usr/bin/sleep"
+	let toml_file = to_file(&tmp, "test.toml", &format!(r#"
+		exec = "{}"
 		search_path = [ "./tests/providers" ]
 
 		[secrets]
 		provider =  [ "{}", "{}" ]
-	"#, source1.to_string_lossy(), source2.to_string_lossy());
+	"#, BIN_SLEEP, source1.to_string_lossy(), source2.to_string_lossy()));
 
-	let toml_file = to_file(&tmp, "test.toml", &toml);
-
-	let mount_before = Command::new("/usr/bin/mount").output().unwrap();
+	let mount_before = Command::new(BIN_MOUNT).output().unwrap();
 	let mount_before = String::from_utf8_lossy(&mount_before.stdout);
 
 	// Spawn the child process and wait 2 seconds for it to setup its mounts.
-	let mut child = Command::new(TSOS_FILE).arg(toml_file).arg("4").spawn().unwrap();
+	let mut child = Command::new(TSOS_FILE)
+		.arg(toml_file)
+		.arg("4")
+		.spawn().unwrap();
 	sleep(Duration::from_secs(2));
 
 	// Now check for leaked mounts while the child is still running.
-	let mount_during = Command::new("/usr/bin/mount").output().unwrap();
+	let mount_during = Command::new(BIN_MOUNT).output().unwrap();
 	let mount_during = String::from_utf8_lossy(&mount_during.stdout);
 
 	assert!(child.wait().unwrap().success());
@@ -221,21 +244,20 @@ fn mount_inside() {
 
 	let source = to_file(&tmp, "source.conf", "s1");
 
-	let toml = format!(r#"
-		#!/home/dgoss/Entwicklung/tsos/target/debug/tsos
-		exec = "/usr/bin/mount"
+	let toml_file = to_file(&tmp, "test.toml", &format!(r#"
+		exec = "{}"
 		search_path = [ "./tests/providers" ]
 
 		[secrets]
 		provider =  [ "{}" ]
-	"#, source.to_string_lossy());
+	"#, BIN_MOUNT, source.to_string_lossy()));
 
-	let toml_file = to_file(&tmp, "test.toml", &toml);
-
-	let mount_before = Command::new("/usr/bin/mount").output().unwrap();
+	let mount_before = Command::new(BIN_MOUNT).output().unwrap();
 	let mount_before = String::from_utf8_lossy(&mount_before.stdout);
 
-	let mount_child = Command::new(TSOS_FILE).arg(toml_file).output().unwrap();
+	let mount_child = Command::new(TSOS_FILE)
+		.arg(toml_file)
+		.output().unwrap();
 	let mount_child = String::from_utf8_lossy(&mount_child.stdout);
 
 	// The output of the mount command must differ between the TSOS process and
@@ -253,20 +275,18 @@ fn multiple_providers() {
 	let source2 = to_file(&tmp, "source2.conf", "s2");
 	let source3 = to_file(&tmp, "source3.conf", "s3");
 
-	let toml = format!(r#"
-		#!/home/dgoss/Entwicklung/tsos/target/debug/tsos
-		exec = "/usr/bin/cat"
+	let toml_file = to_file(&tmp, "test.toml", &format!(r#"
+		exec = "{}"
 		search_path = [ "./tests/providers/a", "./tests/providers/b" ]
 
 		[secrets]
 		provider_aa = [ "{}", "{}" ]
 		provider_ba = [ "{}" ]
-	"#, source1.to_string_lossy(), source2.to_string_lossy(), source3.to_string_lossy());
-
-	let toml_file = to_file(&tmp, "test.toml", &toml);
+	"#, BIN_CAT, source1.to_string_lossy(), source2.to_string_lossy(), source3.to_string_lossy()));
 
 	// Spawn the child process and wait 2 seconds for it to setup its mounts.
-	let output = Command::new(TSOS_FILE).arg(toml_file)
+	let output = Command::new(TSOS_FILE)
+		.arg(toml_file)
 		.arg(source1)
 		.arg(source2)
 		.arg(source3)
