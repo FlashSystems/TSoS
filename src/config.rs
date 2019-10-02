@@ -105,4 +105,82 @@ impl Config {
 
 #[cfg(test)]
 mod test {
+	use super::*;
+
+	#[test]
+	#[should_panic(expected="missing field `exec`")]
+	fn missing_exec() {
+		let toml = r#"
+			uid = 10
+			gid = "test"
+
+			[secrets]
+		"#;
+		let _parsed: Local = toml::from_str(toml).unwrap();
+	}
+
+	#[test]
+	#[should_panic(expected="missing field `secrets`")]
+	fn missing_secrets() {
+		let toml = r#"
+			exec = "test"
+			uid = 10
+			gid = "test"
+		"#;
+		let _parsed: Local = toml::from_str(toml).unwrap();
+	}
+
+	#[test]
+	fn nummeric_uid_gid() {
+		let toml = r#"
+			exec = "test"
+			uid = 10
+			gid = 20
+
+			[secrets]
+		"#;
+		let parsed: Local = toml::from_str(toml).unwrap();
+
+		match parsed.uid.unwrap() {
+			Id::Nummeric(uid) => assert_eq!(uid, 10),
+			_ => assert!(false, "UID is not of variant nummeric.")
+		}
+		match parsed.gid.unwrap() {
+			Id::Nummeric(gid) => assert_eq!(gid, 20),
+			_ => assert!(false, "GID is not of variant nummeric.")
+		}
+	}
+
+	#[test]
+	fn check_parser() {
+		let toml = r#"
+			exec = "test"
+			uid = "user"
+			gid = "group"
+			search_path = [ "/a", "/b" ]
+
+			[secrets]
+				first = [ "/fa", "/fb" ]
+				second = [ "/sa", "/sb" ]
+		"#;
+		let parsed: Local = toml::from_str(toml).unwrap();
+
+		// Check UID
+		match parsed.uid.unwrap() {
+			Id::Text(user) => assert_eq!(user, "user"),
+			_ => assert!(false, "UID is not text.")
+		}
+		match parsed.gid.unwrap() {
+			Id::Text(group) => assert_eq!(group, "group"),
+			_ => assert!(false, "GID is not text.")
+		}
+
+		// Check exec
+		assert_eq!(parsed.exec.to_string_lossy(), "test");
+
+		// Check search path
+		let mut search_path = parsed.search_path.unwrap();
+		assert_eq!(search_path.remove(0).to_string_lossy(), "/a");
+		assert_eq!(search_path.remove(0).to_string_lossy(), "/b");
+	}
 }
