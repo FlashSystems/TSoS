@@ -121,27 +121,58 @@ pub fn resolve_group(group_name: &str) -> Result<GId, error::Error> {
 #[cfg(test)]
 mod test {
 	use super::*;
+	use std::process::Command;
 
+	/// Test that resolving usernames to uids and primary group ids works.
+	/// This test uses getent to get the user list of the system in passwd format and
+	/// parses it to get the reference values.
 	#[test]
 	fn res_user() {
-		// Check that the uid is correctly resolved
-		assert_eq!(resolve_user("root").unwrap(), (0, 0));
-		assert_eq!(resolve_user("bin").unwrap(), (1, 1));
+		let passwd = Command::new("getent").arg("passwd").output().unwrap();
+		let passwd = String::from_utf8(passwd.stdout).unwrap();
+
+		for user in passwd.lines() {
+			if let Some(user_info) = match user.split(':').collect::<Vec<&str>>()[0..4] {
+				[user_name, _, uid, gid] => Some((user_name, uid, gid)),
+				_ => None
+			} {
+				// Test to resolve the user from the name
+				assert_eq!(resolve_user(user_info.0).unwrap(), (
+					u32::from_str_radix(user_info.1, 10).unwrap(),
+					u32::from_str_radix(user_info.2, 10).unwrap()
+				));
+
+				// Test to resolve the user from the uid
+				assert_eq!(resolve_uid(u32::from_str_radix(user_info.1, 10).unwrap()).unwrap(), (
+					u32::from_str_radix(user_info.1, 10).unwrap(),
+					u32::from_str_radix(user_info.2, 10).unwrap()
+				));
+			}
+		}
+
+		// Check that an unkown user leads to an error
 		assert!(resolve_user("u_n-k,o.w+n").is_err());
 	}
 
-	#[test]
-	fn res_uid() {
-		// Check that the uid is correctly resolved
-		assert_eq!(resolve_uid(0).unwrap(), (0, 0));
-		assert_eq!(resolve_uid(1).unwrap(), (1, 1));
-		assert!(resolve_uid(65432).is_err());
-	}
-
+	/// Test that resolving groups to gids works.
+	/// This test uses getent to get the group list of the system in group file format and
+	/// parses it to get the reference values.
 	#[test]
 	fn res_group() {
-		// Check that the uid is correctly resolved
-		assert_eq!(resolve_group("root").unwrap(), 0);
-		assert_eq!(resolve_group("bin").unwrap(), 1);
+		let passwd = Command::new("getent").arg("group").output().unwrap();
+		let passwd = String::from_utf8(passwd.stdout).unwrap();
+
+		for user in passwd.lines() {
+			if let Some(group_info) = match user.split(':').collect::<Vec<&str>>()[0..3] {
+				[group_name, _, gid] => Some((group_name, gid)),
+				_ => None
+			} {
+				// Test to resolve the user from the name
+				assert_eq!(resolve_group(group_info.0).unwrap(), u32::from_str_radix(group_info.1, 10).unwrap());
+			}
+		}
+
+		// Check that an unkown group leads to an error
+		assert!(resolve_group("u_n-k,o.w+n").is_err());
 	}
 }
