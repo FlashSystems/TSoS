@@ -15,6 +15,9 @@ const BIN_ID: &str = "/usr/bin/id";
 const BIN_SLEEP: &str = "/usr/bin/sleep";
 const BIN_MOUNT: &str = "/usr/bin/mount";
 
+const TEST_USER: &str = "nobody";
+const TEST_GROUP: &str = "nobody";
+
 // Path to the secret providers used for tesing
 const PROV_PATH: &str = "./tests/providers";
 
@@ -29,29 +32,51 @@ fn to_file(tmp: &TempDir, file_name: &str, content: &str) -> PathBuf {
 	out_file_name
 }
 
+/// Uses the `id` to resolve a user name into a user id.
+/// Using the `id` command makes sure that the reference value is correct.
+fn resolve_uid(user_name: &str) -> u32 {
+	let output = Command::new(BIN_ID)
+		.arg("-u")
+		.arg(user_name)
+		.output().unwrap();
+
+	u32::from_str_radix(String::from_utf8_lossy(&output.stdout).trim(), 10).unwrap()
+}
+
+/// Uses the `id` to resolve a group name into a group id.
+/// Using the `id` command makes sure that the reference value is correct.
+fn resolve_gid(user_name: &str) -> u32 {
+	let output = Command::new(BIN_ID)
+		.arg("-g")
+		.arg(user_name)
+		.output().unwrap();
+
+	u32::from_str_radix(String::from_utf8_lossy(&output.stdout).trim(), 10).unwrap()
+}
+
 /// Test that the process is startet with the correct uid and the default group id
 #[test]
 fn toml_uid_default() {
 	let tmp = TempDir::default();
 
 	let toml_file = to_file(&tmp, "uid.toml", &format!(r#"
-		exec = "{}"
-		uid = "bin"
+		exec = "{bin}"
+		uid = "{username}"
 
 		[secrets]
-	"#, BIN_ID));
+	"#, bin = BIN_ID, username = TEST_USER));
 	
 	let output = Command::new(TSOS_FILE)
 		.arg(&toml_file)
 		.arg("-u")
 		.output().unwrap();
-	assert_eq!(String::from_utf8_lossy(&output.stdout).trim(), "1");
+	assert_eq!(u32::from_str_radix(String::from_utf8_lossy(&output.stdout).trim(), 10).unwrap(), resolve_uid(TEST_USER));
 
 	let output = Command::new(TSOS_FILE)
 		.arg(&toml_file)
 		.arg("-g")
 		.output().unwrap();
-	assert_eq!(String::from_utf8_lossy(&output.stdout).trim(), "1");
+	assert_eq!(u32::from_str_radix(String::from_utf8_lossy(&output.stdout).trim(), 10).unwrap(), resolve_gid(TEST_USER));
 }
 
 /// Test that the process is startet with the correct group id if only the group id is set.
@@ -60,11 +85,11 @@ fn toml_gid() {
 	let tmp = TempDir::default();
 
 	let toml_file = to_file(&tmp, "uid.toml", &format!(r#"
-		exec = "{}"
-		gid = "bin"
+		exec = "{bin}"
+		gid = "{groupname}"
 
 		[secrets]
-	"#, BIN_ID));
+	"#, bin = BIN_ID, groupname = TEST_GROUP));
 
 	let output = Command::new(TSOS_FILE)
 		.arg(&toml_file)
@@ -76,7 +101,7 @@ fn toml_gid() {
 		.arg(&toml_file)
 		.arg("-g")
 		.output().unwrap();
-	assert_eq!(String::from_utf8_lossy(&output.stdout).trim(), "1");
+	assert_eq!(u32::from_str_radix(String::from_utf8_lossy(&output.stdout).trim(), 10).unwrap(), resolve_gid(TEST_GROUP));
 }
 
 /// Test that the process is startet with the corret uid and gid if both are set.
@@ -85,24 +110,24 @@ fn toml_uid_gid() {
 	let tmp = TempDir::default();
 
 	let toml_file = to_file(&tmp, "uid.toml", &format!(r#"
-		exec = "{}"
-		uid = "bin"
-		gid = "root"
+		exec = "{bin}"
+		uid = "{username}"
+		gid = "{groupname}"
 
 		[secrets]
-	"#, BIN_ID));
+	"#, bin = BIN_ID, username = TEST_USER, groupname = TEST_GROUP));
 
 	let output = Command::new(TSOS_FILE)
 		.arg(&toml_file)
 		.arg("-u")
 		.output().unwrap();
-	assert_eq!(String::from_utf8_lossy(&output.stdout).trim(), "1");
+	assert_eq!(u32::from_str_radix(String::from_utf8_lossy(&output.stdout).trim(), 10).unwrap(), resolve_uid(TEST_USER));
 
 	let output = Command::new(TSOS_FILE)
 		.arg(&toml_file)
 		.arg("-g")
 		.output().unwrap();
-	assert_eq!(String::from_utf8_lossy(&output.stdout).trim(), "0");
+	assert_eq!(u32::from_str_radix(String::from_utf8_lossy(&output.stdout).trim(), 10).unwrap(), resolve_gid(TEST_GROUP));
 }
 
 /// Test that the local search order of the providers is correct.
