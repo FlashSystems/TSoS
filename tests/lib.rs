@@ -242,3 +242,35 @@ fn mount_inside() {
 	// the outside world.
 	assert_ne!(mount_before, mount_child);
 }
+
+/// This test verifies that the output of the provider is correctly overlayed
+/// over the source file and that multiple providers are correctly executed.
+#[test]
+fn multiple_providers() {
+	let tmp = TempDir::default();
+
+	let source1 = to_file(&tmp, "source1.conf", "s1");
+	let source2 = to_file(&tmp, "source2.conf", "s2");
+	let source3 = to_file(&tmp, "source3.conf", "s3");
+
+	let toml = format!(r#"
+		#!/home/dgoss/Entwicklung/tsos/target/debug/tsos
+		exec = "/usr/bin/cat"
+		search_path = [ "./tests/providers/a", "./tests/providers/b" ]
+
+		[secrets]
+		provider_aa = [ "{}", "{}" ]
+		provider_ba = [ "{}" ]
+	"#, source1.to_string_lossy(), source2.to_string_lossy(), source3.to_string_lossy());
+
+	let toml_file = to_file(&tmp, "test.toml", &toml);
+
+	// Spawn the child process and wait 2 seconds for it to setup its mounts.
+	let output = Command::new(TSOS_FILE).arg(toml_file)
+		.arg(source1)
+		.arg(source2)
+		.arg(source3)
+		.output().unwrap();
+	
+	assert_eq!(String::from_utf8_lossy(&output.stdout).trim(), "s1:./tests/providers/a/provider_aa\ns2:./tests/providers/a/provider_aa\ns3:./tests/providers/b/provider_ba");
+}
