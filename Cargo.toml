@@ -5,8 +5,9 @@ authors = ["Daniel Goß <developer@flashsystems.de>"]
 edition = "2018"
 
 [features]
-defautl = [ "acl" ]
+defautl = [ "acl", "systemd" ]
 acl = []
+systemd = []
 
 [dependencies]
 libc = "0.2"

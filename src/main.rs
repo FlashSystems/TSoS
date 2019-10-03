@@ -18,6 +18,9 @@ mod config;
 use config::Config;
 use config::Id;
 
+#[cfg(feature = "systemd")]
+mod journal_logger;
+
 #[derive(Debug)]
 pub enum Error {
 	ProviderNotFound(String),
@@ -45,6 +48,26 @@ impl error::Error for Error {
 	fn source(&self) -> Option<&(dyn error::Error + 'static)> {
 		None
 	}
+}
+
+/// Variant of start_logger that tries to detect an active jourald an
+/// switches to journal logging if it is enabled.
+#[cfg(feature = "systemd")]
+fn start_logger(log_level: Level) {
+	if journal_logger::has_journal() {
+		journal_logger::init_with_level(log_level).unwrap();
+		debug!("Journal logging detected. Switch to journal logger completed.");
+	} else {
+		simple_logger::init_with_level(log_level).unwrap();
+		debug!("No journal logging detected. Using default stderr logger.");
+	}
+}
+
+/// Variant of start_logger that always uses simple_logger if the systemd feature
+/// is disabled.
+#[cfg(not(feature = "systemd"))]
+fn start_logger(log_level: Level) {
+	simple_logger::init_with_level(log_level).unwrap();
 }
 
 fn find_provider(search_path: &[PathBuf], provider_name: &OsStr) -> Option<PathBuf> {
@@ -158,7 +181,7 @@ fn main() {
 		Err(_) => Level::Warn
 	};
 
-	simple_logger::init_with_level(log_level).unwrap();
+	start_logger(log_level);
 
 	// Extract the command line arguments and check if we got at least one
 	// argument (the config file name). All other arguments will be passed

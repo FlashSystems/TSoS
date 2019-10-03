@@ -97,6 +97,18 @@ The secret provider is run as the user that starts TSOS. No privileges are dropp
 
 ## Usage with systemd
 
+TSOS is by default build with systemd integration. It uses the `JOURNAL_STREAM` environment variable (see (system.exec)[https://www.freedesktop.org/software/systemd/man/systemd.exec.html#%24JOURNAL_STREAM]) to detect if TSOS is startet as a systemd unit. If that's the case logging is automatically switched to systemd logging. That way journald metadata is automatically added to the log messages.
+
+If systemd is used to start a TSOS controlled service the `tsos` executable must be launched as root. Any configured users and groups (via `User=` or `Group=`) must be migrated into the TSOS configuration file.
+
+If Capabilites of the process should be restricted the capabilities necessary for TSOS to work must be kept active:
+
+- CAP_SETGID
+- CAP_SETUID
+- CAP_SYS_ADMIN
+
+> *NOTE*: It is planned that TSOS can drop the capabilities that are necessary only for its operation before launching the process. Currently this not _not_ implemented.
+
 ## Building TSOS
 
 To build TSOS you need rust 1.37 and cargo. Just clone the git repository and execute `cargo build --release` to build TSOS.
@@ -110,6 +122,7 @@ Currently the following features are available:
 | Feature | Description | Dependencies |
 |---------|-------------|--------------|
 | acl     | Enable support for file system ACLs. If this feature is disabled only mode bits will be copied to the target file. | libacl |
+| systemd | Enable support for journal logging. If this feature is enabled tsos will try to autodetect systemd and use journald based logging if it is started as a systemd unit. | libsystemd |
 
 ### Test suite
 
