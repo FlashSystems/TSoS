@@ -111,6 +111,7 @@ impl Config {
 mod test {
 	use super::*;
 
+	/// Check that the exec parameter is required
 	#[test]
 	#[should_panic(expected="missing field `exec`")]
 	fn missing_exec() {
@@ -123,6 +124,7 @@ mod test {
 		let _parsed: Local = toml::from_str(toml).unwrap();
 	}
 
+	/// Check that the secrets-section is required
 	#[test]
 	#[should_panic(expected="missing field `secrets`")]
 	fn missing_secrets() {
@@ -134,6 +136,8 @@ mod test {
 		let _parsed: Local = toml::from_str(toml).unwrap();
 	}
 
+	/// Verify that nummeric UIDs are correctly assigned to the Nummeric part of
+	/// the enum.
 	#[test]
 	fn nummeric_uid_gid() {
 		let toml = r#"
@@ -155,6 +159,7 @@ mod test {
 		}
 	}
 
+	/// Verify that all values within the config file are parsed correctly.
 	#[test]
 	fn check_parser() {
 		let toml = r#"
@@ -162,6 +167,7 @@ mod test {
 			uid = "user"
 			gid = "group"
 			search_path = [ "/a", "/b" ]
+			env_path = true
 
 			[secrets]
 				first = [ "/fa", "/fb" ]
@@ -186,5 +192,8 @@ mod test {
 		let mut search_path = parsed.search_path.unwrap();
 		assert_eq!(search_path.remove(0).to_string_lossy(), "/a");
 		assert_eq!(search_path.remove(0).to_string_lossy(), "/b");
+
+		// Check env_path
+		assert!(parsed.env_path.unwrap());
 	}
 }
