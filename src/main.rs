@@ -32,9 +32,9 @@ impl fmt::Display for Error {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		match self {
 			Self::ProviderNotFound(sos) => write!(f, "Provider {} not found in search path.", sos),
-			Self::ProviderFailed(script_file, result_code) => write!(f, "Provider {} failed to execute with result code {}.", script_file.display(), result_code),
-			Self::ProviderTerminated(script_file) => write!(f, "Provider {} terminated by signal.", script_file.display()),
-			Self::ProviderNoFile(script_file) => write!(f, "{} is not a file.", script_file.display()),
+			Self::ProviderFailed(provider_file, result_code) => write!(f, "Provider {} failed to execute with result code {}.", provider_file.display(), result_code),
+			Self::ProviderTerminated(provider_file) => write!(f, "Provider {} terminated by signal.", provider_file.display()),
+			Self::ProviderNoFile(provider_file) => write!(f, "{} is not a file.", provider_file.display()),
 			Self::TemplateNotFound(sos, source_file) => write!(f, "Template file {} for secret provider {} not found.", source_file, sos),
 			Self::InvalidSourceName(sos) => write!(f, "Invalid source name {}.", sos)
 		}
@@ -47,18 +47,18 @@ impl error::Error for Error {
 	}
 }
 
-fn find_script(search_path: &[PathBuf], script_name: &OsStr) -> Option<PathBuf> {
+fn find_provider(search_path: &[PathBuf], provider_name: &OsStr) -> Option<PathBuf> {
 	for path in search_path {
 		if path.is_dir() {
-			let mut script_path = PathBuf::from(path);
-			script_path.push(script_name);
+			let mut provider_path = PathBuf::from(path);
+			provider_path.push(provider_name);
 
-			debug!("Trying {} as secret provider...", script_path.display());
+			debug!("Trying {} as secret provider...", provider_path.display());
 
 			//TODO: Check the file is only writable by root.
 
-			if script_path.is_file() {
-				return Some(script_path);
+			if provider_path.is_file() {
+				return Some(provider_path);
 			}
 		} else {
 			debug!("Search path {} not found or no directory.", path.display());
@@ -82,15 +82,15 @@ fn prepare(config: &Config) -> Result<(), Box<dyn error::Error>> {
 		// Make sure the file name can not be used for path traversal attacks
 		let sos = Path::new(sos).file_name().ok_or_else(|| Error::InvalidSourceName(sos.clone()))?;
 
-		// Search for the secret provider script
+		// Search for the secret provider
 		// If a local search path is configured it takes precedence over the global search path.
-		let mut script_search_result = if let Some(ref search_path) = config.local.search_path { find_script(search_path, sos) } else { None };
-		if script_search_result.is_none() {
-			script_search_result = find_script(&config.global.search_path, sos);
+		let mut provider_search_result = if let Some(ref search_path) = config.local.search_path { find_provider(search_path, sos) } else { None };
+		if provider_search_result.is_none() {
+			provider_search_result = find_provider(&config.global.search_path, sos);
 		}
 
-		if let Some(script_file) = script_search_result {
-			debug!("Found secret provider {} for secret {}.", script_file.display(), sos.to_string_lossy());
+		if let Some(provider_file) = provider_search_result {
+			debug!("Found secret provider {} for secret {}.", provider_file.display(), sos.to_string_lossy());
 			for template in templates.iter() {
 				let target = temp.create_file("tsos-final")?;
 				let template = Path::new(template);	// Shadow target with a path instance because we need a path more often than a string.
@@ -100,12 +100,12 @@ fn prepare(config: &Config) -> Result<(), Box<dyn error::Error>> {
 
 					// Execute the secret provider.
 					// It will use the input file ($1) and update the output file ($2).
-					let exit_code = Command::new(&script_file).args(&[template, &target]).status()?;
+					let exit_code = Command::new(&provider_file).args(&[template, &target]).status()?;
 					if !exit_code.success() {
 						if let Some(code) = exit_code.code() {
-							return Err(Box::new(Error::ProviderFailed(script_file, code)));
+							return Err(Box::new(Error::ProviderFailed(provider_file, code)));
 						} else {
-							return Err(Box::new(Error::ProviderTerminated(script_file)));
+							return Err(Box::new(Error::ProviderTerminated(provider_file)));
 						}
 					}
 
