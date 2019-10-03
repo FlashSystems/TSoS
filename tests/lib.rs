@@ -320,6 +320,31 @@ fn mount_inside() {
 	assert_ne!(mount_before, mount_child);
 }
 
+/// This test verifies that the output of asingle provider is correctly overlayed
+/// over the source file.
+#[test]
+fn single_provider() {
+	let tmp = TempDir::default();
+
+	let source = to_file(&tmp, "source1.conf", "s1");
+
+	let toml_file = to_file(&tmp, "test.toml", &format!(r#"
+		exec = "{bin}"
+		search_path = [ "{path}" ]
+
+		[secrets]
+		provider = [ "{source}" ]
+	"#, bin = BIN_CAT, path = PROV_PATH, source = source.to_string_lossy()));
+
+	// Spawn the child process and wait 2 seconds for it to setup its mounts.
+	let output = Command::new(TSOS_FILE)
+		.arg(toml_file)
+		.arg(source)
+		.output().unwrap();
+	
+	assert_eq!(String::from_utf8_lossy(&output.stdout).trim(), format!("s1:{path}/provider", path = PROV_PATH));
+}
+
 /// This test verifies that the output of the provider is correctly overlayed
 /// over the source file and that multiple providers are correctly executed.
 #[test]
@@ -348,4 +373,30 @@ fn multiple_providers() {
 		.output().unwrap();
 	
 	assert_eq!(String::from_utf8_lossy(&output.stdout).trim(), format!("s1:{path}/a/provider_a\ns2:{path}/a/provider_a\ns3:{path}/b/provider_b", path = PROV_PATH));
+}
+
+/// This test verifies that a missing template (source) file leads to an error.
+#[test]
+fn missing_source() {
+	let tmp = TempDir::default();
+
+	let mut inv_source = PathBuf::from(tmp.as_ref());
+	inv_source.push("missing");
+
+
+	let toml_file = to_file(&tmp, "test.toml", &format!(r#"
+		exec = "{bin}"
+		search_path = [ "{path}" ]
+
+		[secrets]
+		provider = [ "{source}" ]
+	"#, bin = BIN_CAT, path = PROV_PATH, source = inv_source.to_string_lossy()));
+
+	// Spawn the child process and wait 2 seconds for it to setup its mounts.
+	let output = Command::new(TSOS_FILE)
+		.arg(toml_file)
+		.arg(inv_source)
+		.output().unwrap();
+	
+	assert!(!output.status.success());
 }
