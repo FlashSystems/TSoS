@@ -20,7 +20,7 @@ use config::Id;
 
 #[derive(Debug)]
 pub enum Error {
-	ProviderNotFound(PathBuf),
+	ProviderNotFound(String),
 	ProviderFailed(PathBuf, i32),
 	ProviderTerminated(PathBuf),
 	ProviderNoFile(PathBuf),
@@ -31,11 +31,11 @@ pub enum Error {
 impl fmt::Display for Error {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		match self {
-			Self::ProviderNotFound(script_file) => write!(f, "Provider {} not found in search path.", script_file.display()),
+			Self::ProviderNotFound(sos) => write!(f, "Provider {} not found in search path.", sos),
 			Self::ProviderFailed(script_file, result_code) => write!(f, "Provider {} failed to execute with result code {}.", script_file.display(), result_code),
 			Self::ProviderTerminated(script_file) => write!(f, "Provider {} terminated by signal.", script_file.display()),
 			Self::ProviderNoFile(script_file) => write!(f, "{} is not a file.", script_file.display()),
-			Self::TemplateNotFound(sos, source_file) => write!(f, "Source file {} for secret provider {} not found.", source_file, sos),
+			Self::TemplateNotFound(sos, source_file) => write!(f, "Template file {} for secret provider {} not found.", source_file, sos),
 			Self::InvalidSourceName(sos) => write!(f, "Invalid source name {}.", sos)
 		}
 	}
@@ -76,7 +76,7 @@ fn prepare(config: &Config) -> Result<(), Box<dyn error::Error>> {
 	
 	let _temp_mount = system::RamFs::new("tsos", temp.as_ref())?;
 
-	for (sos, targets) in config.local.secrets.iter() {
+	for (sos, templates) in config.local.secrets.iter() {
 		debug!("Processing secret provider {}...", sos);
 
 		// Make sure the file name can not be used for path traversal attacks
@@ -90,17 +90,17 @@ fn prepare(config: &Config) -> Result<(), Box<dyn error::Error>> {
 		}
 
 		if let Some(script_file) = script_search_result {
-			debug!("Found secret provider {} for secret {}.", script_file.display(), Path::new(sos).display());
-			for target in targets.iter() {
-				let destination = temp.create_file("tsos-final")?;
-				let target = Path::new(target);	// Shadow target with a path instance because we need a path more often than a string.
+			debug!("Found secret provider {} for secret {}.", script_file.display(), sos.to_string_lossy());
+			for template in templates.iter() {
+				let target = temp.create_file("tsos-final")?;
+				let template = Path::new(template);	// Shadow target with a path instance because we need a path more often than a string.
 
-				if target.is_file() {
+				if template.is_file() {
 					debug!("Executing secret provider...");
 
 					// Execute the secret provider.
 					// It will use the input file ($1) and update the output file ($2).
-					let exit_code = Command::new(&script_file).args(&[target, &destination]).status()?;
+					let exit_code = Command::new(&script_file).args(&[template, &target]).status()?;
 					if !exit_code.success() {
 						if let Some(code) = exit_code.code() {
 							return Err(Box::new(Error::ProviderFailed(script_file, code)));
@@ -111,15 +111,15 @@ fn prepare(config: &Config) -> Result<(), Box<dyn error::Error>> {
 
 					debug!("Copying permissions...");
 
-					system::copy_perms_and_owners(&target, &destination)?;
+					system::copy_perms_and_owners(&template, &target)?;
 
-					system::bind(&destination, &target)?;
+					system::bind(&target, &template)?;
 				} else {
-					return Err(Box::new(Error::ProviderNoFile(script_file)));
+					return Err(Box::new(Error::TemplateNotFound(sos.to_string_lossy().into_owned(), template.to_string_lossy().into_owned())));
 				}
 			}
 		} else {
-			return Err(Box::new(Error::ProviderNotFound(PathBuf::from(sos))));
+			return Err(Box::new(Error::ProviderNotFound(sos.to_string_lossy().into_owned())));
 		}
 	}
 
