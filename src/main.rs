@@ -92,7 +92,7 @@ fn prepare(config: &Config) -> Result<(), Box<dyn error::Error>> {
 		if let Some(script_file) = script_search_result {
 			debug!("Found secret provider {} for secret {}.", script_file.display(), Path::new(sos).display());
 			for target in targets.iter() {
-				let destination = temp.create_file("tsos-dst")?;
+				let destination = temp.create_file("tsos-final")?;
 				let target = Path::new(target);	// Shadow target with a path instance because we need a path more often than a string.
 
 				if target.is_file() {
