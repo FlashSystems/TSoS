@@ -54,6 +54,7 @@ pub enum Id {
 #[derive(Debug, Deserialize)]
 pub struct Local {
 	pub exec: PathBuf,
+	pub env_path: Option<bool>,
 	pub secrets: HashMap<String, Vec<String>>,
 	pub search_path: Option<Vec<PathBuf>>,
 	pub uid: Option<Id>,
@@ -75,27 +76,30 @@ pub struct Config {
 /// its destructor called. Do not use resources thar require RAII!
 impl Config {
 	pub fn new(file: &Path, env_path: Option<OsString>) -> Result<Self, Error> {
-		let mut config_file = File::open(file)?;
+		// Read and parse the configuration file
 		let mut config_string = String::new();
-
-		config_file.read_to_string(&mut config_string)?;
+		File::open(file)?.read_to_string(&mut config_string)?;
+		let local_config: Local = toml::from_str(&config_string)?;
 
 		// Create a list of search paths used for searching for secret provider scripts
 		let mut search_path = Vec::with_capacity(2);
 
-		// If an additional path was supplied, append it to the default search path.
-		if let Some(env_path) = env_path {
-			for path in split_paths(&env_path) {
-				search_path.push(path);
+		// If the usage of an envrionment variable for the search path is enabled and
+		// an additional path was supplied, append it to the default search path.
+		if local_config.env_path.unwrap_or(false) {
+			if let Some(env_path) = env_path {
+				for path in split_paths(&env_path) {
+					search_path.push(path);
+				}
 			}
-		};
+		}
 
 		// Append the default paths as a last resort.
 		search_path.push(PathBuf::from("/etc/tsos.d"));
 		search_path.push(PathBuf::from("/usr/lib/tsos"));
 
 		Ok(Self{
-			local: toml::from_str(&config_string)?,
+			local: local_config,
 			global: Global {
 				search_path
 			}

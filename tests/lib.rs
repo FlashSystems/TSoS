@@ -212,6 +212,7 @@ fn provider_env_search() {
 	let toml_file = to_file(&tmp, "test.toml", &format!(r#"
 		exec = "{bin}"
 		search_path = [ "{path}/a" ]
+		env_path = true
 
 		[secrets]
 		provider_b =  [ "{source}" ]
@@ -224,6 +225,31 @@ fn provider_env_search() {
 		.output().unwrap();
 
 	assert_eq!(String::from_utf8_lossy(&output.stdout).trim(), format!("s1:{}/b/provider_b", PROV_PATH));
+}
+
+/// Verify that the environment is not searched if the
+/// env_path configuration option is missing.
+#[test]
+fn provider_env_search_off() {
+	let tmp = TempDir::default();
+
+	let source = to_file(&tmp, "source.conf", "s1");
+
+	let toml_file = to_file(&tmp, "test.toml", &format!(r#"
+		exec = "{bin}"
+		search_path = [ "{path}/a" ]
+
+		[secrets]
+		provider_b =  [ "{source}" ]
+	"#, bin = BIN_CAT, path = PROV_PATH, source = source.to_string_lossy()));
+
+	let output = Command::new(TSOS_FILE)
+		.arg(toml_file)
+		.arg(source)
+		.env("TSOS_PATH", format!("{}/b", PROV_PATH))
+		.output().unwrap();
+
+	assert!(!output.status.success(), "Provider from env was found but should not have been.");
 }
 
 /// Test that no mounts are leaking outside our TSOS container.

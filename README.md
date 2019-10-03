@@ -28,6 +28,7 @@ The configuration file accepts the following parameters without any preceeding s
 |-----------|-------------|-----------|
 | exec      | Absolute path to the executable that should be launched by tsos after preparig all configuration files. | yes |
 | search_path | A TOML array of paths that should be searched to find a secret provider. | no |
+| env_path  | Enable searching for secret providers within the paths specified by the `TSOS_PATH` environment variable. | no |
 | uid       | UID to use when starting the program specified by `exec`. The user ID can be specified as a nummeric value or a user name. If this parameter is missing the program will be run as root. | no |
 | gid       | Group to use when starting the program specified by `exec`. The group ID can be specified as a nummeric value or a group name. If this parameter is missing the primary group of the user supplied by the `uid` parameter will be used. If no `uid` parameter is supplied, the group will be set to root. | no |
 
@@ -51,7 +52,7 @@ This example configuration file passes the file `/etc/myserver.conf` to the secr
 Secret providers are executable programs or scripts that accept the source file (the template) as the first and the destination file (the target) as the second parameter. TSOS searches different locations for an executable file that has the name of the secret provider. The following locations are searched in the specified order:
 
 1. The directories specified in the `search_path` configuration option. The directories are searched from left to right.
-2. The search path specified in the `TSOS_PATH` environment variable. Multiple paths are searched from left to right.
+2. If the configuration file set `env_path` to `true`: The search path specified in the `TSOS_PATH` environment variable. Multiple paths are searched from left to right.
 3. The hard coded path `/etc/tsos.d`
 4. The hard coded path `/usr/lib/tsos`
 
@@ -67,6 +68,8 @@ Because TSOS can be used as a direct wrapper for an executable there is no way t
 |----------------------|-------------|
 | TSOS_PATH            | Search path for secret providers. Multiple paths must be separated by a colon (`:`). The syntax is equivalent to the `PATH` environment variable. |
 | TSOS_LOG             | The requested log level. See Chapter "Logging and debugging". |
+
+Due to security considerations the `TSOS_PATH` environment variable is only honored if `env_path` is set to `true` within the configuration file.
 
 ## Logging and debugging
 
