@@ -132,20 +132,17 @@ mod test {
 		let passwd = String::from_utf8(passwd.stdout).unwrap();
 
 		for user in passwd.lines() {
-			if let Some(user_info) = match user.split(':').collect::<Vec<&str>>()[0..4] {
-				[user_name, _, uid, gid] => Some((user_name, uid, gid)),
-				_ => None
-			} {
+			if let [user_name, _, uid, gid] = user.split(':').collect::<Vec<&str>>()[0..4] {
 				// Test to resolve the user from the name
-				assert_eq!(resolve_user(user_info.0).unwrap(), (
-					u32::from_str_radix(user_info.1, 10).unwrap(),
-					u32::from_str_radix(user_info.2, 10).unwrap()
+				assert_eq!(resolve_user(user_name).unwrap(), (
+					u32::from_str_radix(uid, 10).unwrap(),
+					u32::from_str_radix(gid, 10).unwrap()
 				));
 
 				// Test to resolve the user from the uid
-				assert_eq!(resolve_uid(u32::from_str_radix(user_info.1, 10).unwrap()).unwrap(), (
-					u32::from_str_radix(user_info.1, 10).unwrap(),
-					u32::from_str_radix(user_info.2, 10).unwrap()
+				assert_eq!(resolve_uid(u32::from_str_radix(uid, 10).unwrap()).unwrap(), (
+					u32::from_str_radix(uid, 10).unwrap(),
+					u32::from_str_radix(gid, 10).unwrap()
 				));
 			}
 		}
@@ -163,12 +160,9 @@ mod test {
 		let passwd = String::from_utf8(passwd.stdout).unwrap();
 
 		for user in passwd.lines() {
-			if let Some(group_info) = match user.split(':').collect::<Vec<&str>>()[0..3] {
-				[group_name, _, gid] => Some((group_name, gid)),
-				_ => None
-			} {
+			if let [group_name, _, gid] = user.split(':').collect::<Vec<&str>>()[0..3] {
 				// Test to resolve the user from the name
-				assert_eq!(resolve_group(group_info.0).unwrap(), u32::from_str_radix(group_info.1, 10).unwrap());
+				assert_eq!(resolve_group(group_name).unwrap(), u32::from_str_radix(gid, 10).unwrap());
 			}
 		}
 
