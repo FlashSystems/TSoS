@@ -5,7 +5,7 @@ authors = ["Daniel Goß <developer@flashsystems.de>"]
 edition = "2018"
 
 [features]
-defautl = [ "acl", "systemd" ]
+default = [ "acl", "systemd" ]
 acl = []
 systemd = []
 
