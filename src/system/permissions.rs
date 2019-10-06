@@ -21,9 +21,15 @@ extern {
 }
 
 #[cfg(feature = "acl")]
-fn copy_permissions(src: &Path, _: &dyn MetadataExt, dst: &Path) -> io::Result<()> {
+fn copy_permissions(src: &Path, src_metadata: &dyn MetadataExt, dst: &Path) -> io::Result<()> {
 	let c_src = CString::new(src.to_str().unwrap())?;
 	let c_dst = CString::new(dst.to_str().unwrap())?;
+
+	debug!("Copying set-uid, set-gid and sticky bit from {} to {}...", src.display(), dst.display());
+
+	if unsafe { libc::chmod(c_dst.as_ptr(), src_metadata.st_mode() & (libc::S_ISUID | libc::S_ISGID | libc::S_ISVTX) ) } != 0 {
+		return Err(io::Error::last_os_error());
+	}	
 
 	debug!("Copying file ACLs from {} to {}...", src.display(), dst.display());
 
