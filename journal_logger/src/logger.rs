@@ -1,5 +1,4 @@
 use log::{Record, Level, Metadata, SetLoggerError};
-use std::fmt;
 use libc;
 
 #[repr(C)]
@@ -14,6 +13,7 @@ extern "C" {
 }
 
 /* from syslog.h */
+#[repr(u8)]
 enum Priority {
 	//Emerg =   0, /* system is unusable */
 	//Alert =   1, /* action must be taken immediately */
@@ -23,12 +23,6 @@ enum Priority {
 	//Notice =  5, /* normal but significant condition */
 	Info =    6,   /* informational */
 	Debug =   7    /* debug-level messages */
-}
-
-impl fmt::Display for Priority {
-	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		write!(f, "{}", self)
-	}
 }
 
 /// Implements a systemd logger
@@ -52,7 +46,7 @@ impl log::Log for JournalLogger {
 					Level::Info => Priority::Info,
 					Level::Warn => Priority::Warning,
 					Level::Error => Priority::Error
-				}
+				} as u8
 			));
 
 			sd_record.push(format!("MESSAGE={}", record.args()));
