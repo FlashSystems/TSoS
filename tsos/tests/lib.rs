@@ -7,7 +7,7 @@ use std::process::Command;
 use temp_testdir::TempDir;
 
 // Path to the compiled tsos executable used for tesing
-const TSOS_FILE: &str = "./target/debug/tsos";
+const TSOS_FILE: &str = "../target/debug/tsos";
 
 // Path to different binaries required for the tests
 const BIN_CAT: &str = "/usr/bin/cat";
