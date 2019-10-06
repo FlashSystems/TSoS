@@ -18,9 +18,6 @@ mod config;
 use config::Config;
 use config::Id;
 
-#[cfg(feature = "systemd")]
-mod journal_logger;
-
 #[derive(Debug)]
 pub enum Error {
 	ProviderNotFound(String),
