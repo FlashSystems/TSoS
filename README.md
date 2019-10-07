@@ -35,9 +35,9 @@ The configuration file accepts the following parameters without any preceeding s
 The files that should be processed by TSOS are listed within the `secrets` section. The secret provider to use is listed as the key. The files that should be processed by this secret provider are passed as an array of file names. The file names can be listed as relative path names, but it is not recommended to do so.
 
 ```toml
-exec=/bin/myserver
-uid=msrv
-gid=msrv
+exec="/bin/myserver"
+uid="msrv"
+gid="msrv"
 
 [secrets]
 pw-provider= [
