@@ -3,6 +3,7 @@ name = "tsos"
 version = "0.1.0"
 authors = ["Daniel Goß <developer@flashsystems.de>"]
 edition = "2018"
+license = "MIT"
 
 [features]
 default = [ "acl", "systemd" ]
