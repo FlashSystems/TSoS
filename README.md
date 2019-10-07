@@ -66,8 +66,9 @@ Because TSOS can be used as a direct wrapper for an executable there is no way t
 
 | Environment variable | Description |
 |----------------------|-------------|
-| `TSOS_PATH`            | Search path for secret providers. Multiple paths must be separated by a colon (`:`). The syntax is equivalent to the `PATH` environment variable. |
-| `TSOS_LOG`             | The requested log level. See Chapter "Logging and debugging". |
+| `TSOS_PATH`          | Search path for secret providers. Multiple paths must be separated by a colon (`:`). The syntax is equivalent to the `PATH` environment variable. |
+| `TSOS_LOG`           | The requested log level. See Chapter "Logging and debugging". |
+| `TSOS_FORCE_JOURNAL` | Disables the journal auto detection and forces the usage of the systemd journal for log output. If no journal is available the log messages will get lost. |
 
 Due to security considerations the `TSOS_PATH` environment variable is only honored if `env_path` is set to `true` within the configuration file.
 
@@ -98,6 +99,8 @@ The secret provider is run as the user that starts TSOS. No privileges are dropp
 ## Usage with systemd
 
 TSOS is by default build with systemd integration. It uses the `JOURNAL_STREAM` environment variable (see (system.exec)[https://www.freedesktop.org/software/systemd/man/systemd.exec.html#%24JOURNAL_STREAM]) to detect if TSOS is startet as a systemd unit. If that's the case logging is automatically switched to systemd logging. That way journald metadata is automatically added to the log messages.
+
+Logging to the systemd journal can be enforced via the `TSOS_FORCE_JOURNAL` environment variable. This disables auto detection. The value of this environment variable must be "yes", "true" or "1".
 
 If systemd is used to start a TSOS controlled service the `tsos` executable must be launched as root. Any configured users and groups (via `User=` or `Group=`) must be migrated into the TSOS configuration file.
 

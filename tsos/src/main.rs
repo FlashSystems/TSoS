@@ -51,7 +51,17 @@ impl error::Error for Error {
 /// switches to journal logging if it is enabled.
 #[cfg(feature = "systemd")]
 fn start_logger(log_level: Level) {
-	if journal_logger::has_journal() {
+	let force = if let Ok(force_env) = env::var("TSOS_FORCE_JOURNAL") {
+		if let Some(first_char) = force_env.chars().next() {
+			[ '1', 'y', 'Y', 't', 'T' ].iter().find(|&&v| v == first_char).is_some()
+		} else {
+			false
+		}
+	} else {
+		false
+	};
+
+	if force || journal_logger::has_journal() {
 		journal_logger::init_with_level(log_level).unwrap();
 		debug!("Journal logging detected. Switch to journal logger completed.");
 	} else {
