@@ -6,8 +6,8 @@ use std::time::Duration;
 use std::process::Command;
 use temp_testdir::TempDir;
 
-// Path to the compiled tsos executable used for tesing
-const TSOS_FILE: &str = "../target/debug/tsos";
+// Arguments to pass to cargo to run the tsos executable
+const CARGO_ARGS: &[&str] = &[ "run", "-q", "--" ];
 
 // Path to different binaries required for the tests
 const BIN_CAT: &str = "/usr/bin/cat";
@@ -66,13 +66,13 @@ fn toml_uid_default() {
 		[secrets]
 	"#, bin = BIN_ID, username = TEST_USER));
 	
-	let output = Command::new(TSOS_FILE)
+	let output = Command::new("cargo").args(CARGO_ARGS)
 		.arg(&toml_file)
 		.arg("-u")
 		.output().unwrap();
 	assert_eq!(u32::from_str_radix(String::from_utf8_lossy(&output.stdout).trim(), 10).unwrap(), resolve_uid(TEST_USER));
 
-	let output = Command::new(TSOS_FILE)
+	let output = Command::new("cargo").args(CARGO_ARGS)
 		.arg(&toml_file)
 		.arg("-g")
 		.output().unwrap();
@@ -91,13 +91,13 @@ fn toml_gid() {
 		[secrets]
 	"#, bin = BIN_ID, groupname = TEST_GROUP));
 
-	let output = Command::new(TSOS_FILE)
+	let output = Command::new("cargo").args(CARGO_ARGS)
 		.arg(&toml_file)
 		.arg("-u")
 		.output().unwrap();
 	assert_eq!(String::from_utf8_lossy(&output.stdout).trim(), "0");
 
-	let output = Command::new(TSOS_FILE)
+	let output = Command::new("cargo").args(CARGO_ARGS)
 		.arg(&toml_file)
 		.arg("-g")
 		.output().unwrap();
@@ -117,13 +117,13 @@ fn toml_uid_gid() {
 		[secrets]
 	"#, bin = BIN_ID, username = TEST_USER, groupname = TEST_GROUP));
 
-	let output = Command::new(TSOS_FILE)
+	let output = Command::new("cargo").args(CARGO_ARGS)
 		.arg(&toml_file)
 		.arg("-u")
 		.output().unwrap();
 	assert_eq!(u32::from_str_radix(String::from_utf8_lossy(&output.stdout).trim(), 10).unwrap(), resolve_uid(TEST_USER));
 
-	let output = Command::new(TSOS_FILE)
+	let output = Command::new("cargo").args(CARGO_ARGS)
 		.arg(&toml_file)
 		.arg("-g")
 		.output().unwrap();
@@ -149,7 +149,7 @@ fn provider_local_search() {
 			provider =  [ "{source}" ]
 		"#, bin = BIN_CAT, path = PROV_PATH, source = source.to_string_lossy()));
 
-		let output = Command::new(TSOS_FILE)
+		let output = Command::new("cargo").args(CARGO_ARGS)
 			.arg(toml_file)
 			.arg(source)
 			.output().unwrap();
@@ -169,7 +169,7 @@ fn provider_local_search() {
 			provider =  [ "{source}" ]
 		"#, bin = BIN_CAT, path = PROV_PATH, source = source.to_string_lossy()));
 
-		let output = Command::new(TSOS_FILE)
+		let output = Command::new("cargo").args(CARGO_ARGS)
 			.arg(toml_file)
 			.arg(source)
 			.output().unwrap();
@@ -193,7 +193,7 @@ fn provider_local_before_env_search() {
 		provider =  [ "{source}" ]
 	"#, bin = BIN_CAT, path = PROV_PATH, source = source.to_string_lossy()));
 
-	let output = Command::new(TSOS_FILE)
+	let output = Command::new("cargo").args(CARGO_ARGS)
 		.arg(toml_file)
 		.arg(source)
 		.env("TSOS_PATH", format!("{}/b", PROV_PATH))
@@ -218,7 +218,7 @@ fn provider_env_search() {
 		provider_b =  [ "{source}" ]
 	"#, bin = BIN_CAT, path = PROV_PATH, source = source.to_string_lossy()));
 
-	let output = Command::new(TSOS_FILE)
+	let output = Command::new("cargo").args(CARGO_ARGS)
 		.arg(toml_file)
 		.arg(source)
 		.env("TSOS_PATH", format!("{}/b", PROV_PATH))
@@ -243,7 +243,7 @@ fn provider_env_search_off() {
 		provider_b =  [ "{source}" ]
 	"#, bin = BIN_CAT, path = PROV_PATH, source = source.to_string_lossy()));
 
-	let output = Command::new(TSOS_FILE)
+	let output = Command::new("cargo").args(CARGO_ARGS)
 		.arg(toml_file)
 		.arg(source)
 		.env("TSOS_PATH", format!("{}/b", PROV_PATH))
@@ -275,7 +275,7 @@ fn mount_leakage() {
 	let mount_before = String::from_utf8_lossy(&mount_before.stdout);
 
 	// Spawn the child process and wait 2 seconds for it to setup its mounts.
-	let mut child = Command::new(TSOS_FILE)
+	let mut child = Command::new("cargo").args(CARGO_ARGS)
 		.arg(toml_file)
 		.arg("4")
 		.spawn().unwrap();
@@ -310,7 +310,7 @@ fn mount_inside() {
 	let mount_before = Command::new(BIN_MOUNT).output().unwrap();
 	let mount_before = String::from_utf8_lossy(&mount_before.stdout);
 
-	let mount_child = Command::new(TSOS_FILE)
+	let mount_child = Command::new("cargo").args(CARGO_ARGS)
 		.arg(toml_file)
 		.output().unwrap();
 	let mount_child = String::from_utf8_lossy(&mount_child.stdout);
@@ -337,7 +337,7 @@ fn single_provider() {
 	"#, bin = BIN_CAT, path = PROV_PATH, source = source.to_string_lossy()));
 
 	// Spawn the child process and wait 2 seconds for it to setup its mounts.
-	let output = Command::new(TSOS_FILE)
+	let output = Command::new("cargo").args(CARGO_ARGS)
 		.arg(toml_file)
 		.arg(source)
 		.output().unwrap();
@@ -365,7 +365,7 @@ fn multiple_providers() {
 	"#, bin = BIN_CAT, path = PROV_PATH, source1 = source1.to_string_lossy(), source2 = source2.to_string_lossy(), source3 = source3.to_string_lossy()));
 
 	// Spawn the child process and wait 2 seconds for it to setup its mounts.
-	let output = Command::new(TSOS_FILE)
+	let output = Command::new("cargo").args(CARGO_ARGS)
 		.arg(toml_file)
 		.arg(source1)
 		.arg(source2)
@@ -393,7 +393,7 @@ fn missing_source() {
 	"#, bin = BIN_CAT, path = PROV_PATH, source = inv_source.to_string_lossy()));
 
 	// Spawn the child process and wait 2 seconds for it to setup its mounts.
-	let output = Command::new(TSOS_FILE)
+	let output = Command::new("cargo").args(CARGO_ARGS)
 		.arg(toml_file)
 		.arg(inv_source)
 		.output().unwrap();
