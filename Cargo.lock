@@ -223,7 +223,7 @@ dependencies = [
 
 [[package]]
 name = "tsos"
-version = "0.1.0"
+version = "0.5.0"
 dependencies = [
  "journal_logger 0.1.0",
  "libc 0.2.62 (registry+https://github.com/rust-lang/crates.io-index)",
