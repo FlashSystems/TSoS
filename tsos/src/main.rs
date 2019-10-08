@@ -9,7 +9,7 @@ use std::ffi::OsStr;
 use std::process::exit;
 
 use simple_logger;
-use log::{Level, debug, error};
+use log::{Level, debug, info, error};
 
 mod system;
 use system::TempDir;
@@ -189,6 +189,9 @@ fn main() {
 	};
 
 	start_logger(log_level);
+
+	// Output some version information
+	info!("{} v{}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
 
 	// Extract the command line arguments and check if we got at least one
 	// argument (the config file name). All other arguments will be passed
