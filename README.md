@@ -115,7 +115,6 @@ The necessary capabilities are:
 - CAP_SYS_ADMIN
 - CAP_CHOWN
 - CAP_FOWNER
-
 - CAP_SETUID (only if the `UID` configuration option is used)
 - CAP_SETGID (only if the `GID` configuration option is used)
 
