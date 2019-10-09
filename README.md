@@ -6,7 +6,7 @@ Sometimes you need to put passwords and other sensitive information into configu
 
 - The secret information can not be managed automatically.
 - The secret information gets backuped or the other configuration information will not be backuped.
-- The secret informatino will be written to disk. If the disks are not encrypted the information might be leaked when the server is decommissioned.
+- The secret information will be written to disk. If the disks are not encrypted the information might be leaked when the server is decommissioned.
 
 To solve these drawbacks, complicated mazes of in-memory file-systems, symbolic links and pre-start-scripts are often used. The scripts take a template configuration file and insert the security critical information before starting the service. That way some of the drawbacks can be mitigated. But it makes the management of the configuration files more complicated (the configured file is not equivalent with the template file) and you have to take special precautions to not include the security critical configuration into your backup by accident.
 
@@ -22,15 +22,15 @@ TSoS uses an overlay mount to shadow the source configuration file with the proc
 
 TSoS is configured via a TOML configuration file. The files name is the only parameter of the `TSoS` executable. All other parameters get passed on to the process launched by TSoS. This makes it possible to use a TSoS configuration file in combination with an appropriate Shebang (`#!`) as a wrapper for any executable.
 
-The configuration file accepts the following parameters without any preceeding section:
+The configuration file accepts the following parameters without any preceding section:
 
 | Parameter | Description | Mandatory |
 |-----------|-------------|-----------|
-| `exec`    | Absolute path to the executable that should be launched by TSoS after preparig all configuration files. | yes |
+| `exec`    | Absolute path to the executable that should be launched by TSoS after preparing all configuration files. | yes |
 | `search_path` | A TOML array of paths that should be searched to find a secret provider. | no |
 | `env_path`  | Enable searching for secret providers within the paths specified by the `TSoS_PATH` environment variable. | no |
-| `uid`       | UID to use when starting the program specified by `exec`. The user ID can be specified as a nummeric value or a user name. If this parameter is missing the program will be run as the user that started `TSoS`. | no |
-| `gid`       | Group to use when starting the program specified by `exec`. The group ID can be specified as a nummeric value or a group name. If this parameter is missing the primary group of the user supplied by the `uid` parameter will be used. If no `uid` parameter is supplied, the group will be set to the primary group of the user that started `TSoS`. | no |
+| `uid`       | UID to use when starting the program specified by `exec`. The user ID can be specified as a numeric value or a user name. If this parameter is missing the program will be run as the user that started `TSoS`. | no |
+| `gid`       | Group to use when starting the program specified by `exec`. The group ID can be specified as a numeric value or a group name. If this parameter is missing the primary group of the user supplied by the `uid` parameter will be used. If no `uid` parameter is supplied, the group will be set to the primary group of the user that started `TSoS`. | no |
 
 The files that should be processed by TSoS are listed within the `secrets` section. The secret provider to use is listed as the key. The files that should be processed by this secret provider are passed as an array of file names. The file names can be listed as relative path names, but it is not recommended to do so.
 
@@ -98,7 +98,7 @@ The secret provider is run as the user that starts TSoS. No privileges are dropp
 
 ## Usage with systemd
 
-TSoS is by default build with systemd integration. It uses the `JOURNAL_STREAM` environment variable (see (system.exec)[https://www.freedesktop.org/software/systemd/man/systemd.exec.html#%24JOURNAL_STREAM]) to detect if TSoS is startet as a systemd unit. If that's the case logging is automatically switched to systemd logging. That way journald metadata is automatically added to the log messages.
+TSoS is by default build with systemd integration. It uses the `JOURNAL_STREAM` environment variable (see (system.exec)[https://www.freedesktop.org/software/systemd/man/systemd.exec.html#%24JOURNAL_STREAM]) to detect if TSoS is started as a systemd unit. If that's the case logging is automatically switched to systemd logging. That way journald metadata is automatically added to the log messages.
 
 Logging to the systemd journal can be enforced via the `TSoS_FORCE_JOURNAL` environment variable. This disables auto detection. The value of this environment variable must be "yes", "true" or "1".
 
@@ -136,12 +136,12 @@ Currently the following features are available:
 | Feature | Description | Dependencies |
 |---------|-------------|--------------|
 | acl     | Enable support for file system ACLs. If this feature is disabled only mode bits will be copied to the target file. | libacl |
-| systemd | Enable support for journal logging. If this feature is enabled TSoS will try to autodetect systemd and use journald based logging if it is started as a systemd unit. | libsystemd |
+| systemd | Enable support for journal logging. If this feature is enabled TSoS will try to auto-detect systemd and use journald based logging if it is started as a systemd unit. | libsystemd |
 
 ### Test suite
 
 TSoS comes with a test suite that tries to exercise as much of its functionality as possible. As TSoS is a very low level tool, most of the functionality unfortunately requires root privileges. TSoS will use `sudo` to acquire root privileges before running the tests.
 
-> **WARNING**: Because tests can go wrong there is a risk of TSoS damaging your linux installation while performing the test suite as the root user. It is recommended to use a virtual machine for running the tests.
+> **WARNING**: Because tests can go wrong there is a risk of TSoS damaging your Linux installation while performing the test suite as the root user. It is recommended to use a virtual machine for running the tests.
 
 To run the test suite open a terminal, switch to the root directory of the TSoS repository and execute `cargo test`.
