@@ -145,5 +145,3 @@ TSOS comes with a test suite that tries to exercise as much of its functionality
 > **WARNING**: Because tests can go wrong there is a risk of TSOS damaging your linux installation while performing the test suite as the root user. It is recommended to use a virtual machine for running the tests.
 
 To run the test suite open a terminal, switch to the root directory of the TSOS repository and execute `cargo test`.
-
-## Reporting bugs
