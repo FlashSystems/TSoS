@@ -29,8 +29,8 @@ The configuration file accepts the following parameters without any preceeding s
 | `exec`    | Absolute path to the executable that should be launched by tsos after preparig all configuration files. | yes |
 | `search_path` | A TOML array of paths that should be searched to find a secret provider. | no |
 | `env_path`  | Enable searching for secret providers within the paths specified by the `TSOS_PATH` environment variable. | no |
-| `uid`       | UID to use when starting the program specified by `exec`. The user ID can be specified as a nummeric value or a user name. If this parameter is missing the program will be run as root. | no |
-| `gid`       | Group to use when starting the program specified by `exec`. The group ID can be specified as a nummeric value or a group name. If this parameter is missing the primary group of the user supplied by the `uid` parameter will be used. If no `uid` parameter is supplied, the group will be set to root. | no |
+| `uid`       | UID to use when starting the program specified by `exec`. The user ID can be specified as a nummeric value or a user name. If this parameter is missing the program will be run as the user that started `tsos`. | no |
+| `gid`       | Group to use when starting the program specified by `exec`. The group ID can be specified as a nummeric value or a group name. If this parameter is missing the primary group of the user supplied by the `uid` parameter will be used. If no `uid` parameter is supplied, the group will be set to the primary group of the user that started `tsos`. | no |
 
 The files that should be processed by TSOS are listed within the `secrets` section. The secret provider to use is listed as the key. The files that should be processed by this secret provider are passed as an array of file names. The file names can be listed as relative path names, but it is not recommended to do so.
 
@@ -102,15 +102,26 @@ TSOS is by default build with systemd integration. It uses the `JOURNAL_STREAM` 
 
 Logging to the systemd journal can be enforced via the `TSOS_FORCE_JOURNAL` environment variable. This disables auto detection. The value of this environment variable must be "yes", "true" or "1".
 
-If systemd is used to start a TSOS controlled service the `tsos` executable must be launched as root. Any configured users and groups (via `User=` or `Group=`) must be migrated into the TSOS configuration file.
+If systemd is used to start a TSOS controlled service, the `tsos` executable must be launched as root. Any configured users and groups (via `User=` or `Group=`) must be migrated into the TSOS configuration file. As a more secure alternative you can use capabilities to make TSOS executable by unprivileged users and keep the `User=` and `Group=` settings within the unit-file. See the next chapter on how to do this.
 
-If Capabilites of the process should be restricted the capabilities necessary for TSOS to work must be kept active:
+## Using TSOS as an unprivileged user
 
-- CAP_SETGID
-- CAP_SETUID
+TSOS can be started as root and can start the final executable by using the `UID` and `GID` configuration options.
+
+But there is an alternative that does not require TSOS to be run with root privileges. If the used kernel supports capabilities, the necessary capabilities can be added to the `tsos` executable. That way even an unprivileged user can run TSOS.
+
+The necessary capabilities are:
+
 - CAP_SYS_ADMIN
+- CAP_CHOWN
+- CAP_FOWNER
 
-> *NOTE*: It is planned that TSOS can drop the capabilities that are necessary only for its operation before launching the process. Currently this not _not_ implemented.
+- CAP_SETUID (only if the `UID` configuration option is used)
+- CAP_SETGID (only if the `GID` configuration option is used)
+
+These can be set on the TSOS executable by the following command line: `sudo setcap "cap_sys_admin=ep cap_chown=ep cap_fowner=ep cap_setuid=ep cap_setgid=ep tsos`
+
+The capabilities will _not_ get inherited to the final executable. TSOS uses `execvp` to replace its process with the final executable. This call will not inherit the capabilities of TSOS to the final executable. This is much more secure than making the executable setuid root or give the user sudo permissions on `tsos`.
 
 ## Building TSOS
 
