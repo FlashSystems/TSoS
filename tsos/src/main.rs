@@ -53,7 +53,7 @@ impl error::Error for Error {
 fn start_logger(log_level: Level) {
 	let force = if let Ok(force_env) = env::var("TSOS_FORCE_JOURNAL") {
 		if let Some(first_char) = force_env.chars().next() {
-			[ '1', 'y', 'Y', 't', 'T' ].iter().find(|&&v| v == first_char).is_some()
+			[ '1', 'y', 'Y', 't', 'T' ].iter().any(|&v| v == first_char)
 		} else {
 			false
 		}
