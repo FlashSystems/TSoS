@@ -37,7 +37,7 @@ fn check_descriptor(device: libc::dev_t, inode: libc::ino_t, fd: RawFd) -> bool{
 #[cfg(target_os = "linux")]
 pub fn has_journal() -> bool {
 	if let Ok(journal_stream) = env::var("JOURNAL_STREAM") {
-		if let [Some(device), Some(inode)] = journal_stream.split(":").map(|v| u64::from_str_radix(v.trim(), 10).ok()).collect::<Vec<Option<u64>>>()[0..2] {
+		if let [Some(device), Some(inode)] = journal_stream.split(':').map(|v| u64::from_str_radix(v.trim(), 10).ok()).collect::<Vec<Option<u64>>>()[0..2] {
 			// Check if stderr or stdout match the passed device and inode number
 			check_descriptor(device, inode, stderr().as_raw_fd()) ||
 			check_descriptor(device, inode, stdout().as_raw_fd())
