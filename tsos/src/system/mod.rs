@@ -128,7 +128,7 @@ mod test {
 	/// parses it to get the reference values.
 	#[test]
 	fn res_user() {
-		let passwd = Command::new("getent").arg("passwd").output().unwrap();
+		let passwd = Command::new("getent").arg("passwd").arg("root").arg("nobody").arg("daemon").output().unwrap();
 		let passwd = String::from_utf8(passwd.stdout).unwrap();
 
 		for user in passwd.lines() {
@@ -156,7 +156,7 @@ mod test {
 	/// parses it to get the reference values.
 	#[test]
 	fn res_group() {
-		let passwd = Command::new("getent").arg("group").output().unwrap();
+		let passwd = Command::new("getent").arg("group").arg("root").arg("nobody").arg("daemon").output().unwrap();
 		let passwd = String::from_utf8(passwd.stdout).unwrap();
 
 		for user in passwd.lines() {
